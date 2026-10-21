@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" width="900" height="250" role="img" aria-label="Accuracy of the built-in engine">
+<style>
+  .bg { fill: #fcfcfb; } .grid { stroke: #e4e3df; stroke-width: 1; }
+  .axis { fill: #52514e; font: 12px system-ui, -apple-system, sans-serif; }
+  .small { fill: #52514e; font: 11.5px system-ui, -apple-system, sans-serif; }
+  .title { fill: #0b0b0b; font: 600 15px system-ui, -apple-system, sans-serif; }
+  .sub { fill: #0b0b0b; font: 600 13px system-ui, -apple-system, sans-serif; }
+  .box { fill: #f3f2ee; stroke: #d6d4cd; stroke-width: 1; } .arrow { stroke: #8a8984; stroke-width: 1.5; fill: none; }
+  .s0 { stroke: #2a78d6; } .s1 { stroke: #eb6834; } .f0 { fill: #2a78d6; } .f1 { fill: #eb6834; }
+  .f2 { fill: #c9c7bf; } .band { fill: #2a78d6; opacity: .12; } .shade { fill: #eb6834; opacity: .08; }
+  .line { fill: none; stroke-width: 2.5; } .dash { stroke-dasharray: 5 4; }
+  .white { fill: #ffffff; font: 600 12px system-ui, -apple-system, sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19; } .grid { stroke: #34332f; } .axis, .small { fill: #c3c2b7; } .title, .sub { fill: #f0efec; }
+    .box { fill: #252523; stroke: #3d3c38; } .arrow { stroke: #8a8984; }
+    .s0 { stroke: #3987e5; } .s1 { stroke: #d95926; } .f0 { fill: #3987e5; } .f1 { fill: #d95926; } .f2 { fill: #55544f; }
+    .band { fill: #3987e5; }
+  }
+</style>
+<rect class="bg" width="900" height="250" rx="8"/>
+<text class="title" x="24" y="28">Built-in engine: right, “I can’t answer that”, or wrong</text>
+<text class="axis" x="24" y="50">Questions with hand-written correct SQL; an answer is right only when its numbers match.</text>
+<text class="axis" x="238" y="89" text-anchor="end">Main test set (40)</text>
+<rect class="f0" x="250" y="70" width="570" height="30" rx="3"/>
+<text class="white" x="258" y="89">40 right</text>
+<text class="axis" x="238" y="141" text-anchor="end">New wording, first try (20)</text>
+<rect class="f0" x="250" y="122" width="399" height="30" rx="3"/>
+<text class="white" x="258" y="141">14 right</text>
+<rect class="f2" x="649" y="122" width="86" height="30" rx="3"/>
+<text class="sub" x="657" y="141">3 declined</text>
+<rect class="f1" x="734" y="122" width="86" height="30" rx="3"/>
+<text class="white" x="742" y="141">3 wrong</text>
+<text class="axis" x="238" y="193" text-anchor="end">Out of scope (should decline) (12)</text>
+<rect class="f0" x="250" y="174" width="570" height="30" rx="3"/>
+<text class="white" x="258" y="193">12 declined</text>
+<text class="axis" x="24" y="232">Alerts: all 6 planted events found in tests; 0 false alerts over 351 simulated days.</text>
+</svg>

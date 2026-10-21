@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 250" width="900" height="250" role="img" aria-label="Steps from a question to an answer">
+<style>
+  .bg { fill: #fcfcfb; } .grid { stroke: #e4e3df; stroke-width: 1; }
+  .axis { fill: #52514e; font: 12px system-ui, -apple-system, sans-serif; }
+  .small { fill: #52514e; font: 11.5px system-ui, -apple-system, sans-serif; }
+  .title { fill: #0b0b0b; font: 600 15px system-ui, -apple-system, sans-serif; }
+  .sub { fill: #0b0b0b; font: 600 13px system-ui, -apple-system, sans-serif; }
+  .box { fill: #f3f2ee; stroke: #d6d4cd; stroke-width: 1; } .arrow { stroke: #8a8984; stroke-width: 1.5; fill: none; }
+  .s0 { stroke: #2a78d6; } .s1 { stroke: #eb6834; } .f0 { fill: #2a78d6; } .f1 { fill: #eb6834; }
+  .f2 { fill: #c9c7bf; } .band { fill: #2a78d6; opacity: .12; } .shade { fill: #eb6834; opacity: .08; }
+  .line { fill: none; stroke-width: 2.5; } .dash { stroke-dasharray: 5 4; }
+  .white { fill: #ffffff; font: 600 12px system-ui, -apple-system, sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19; } .grid { stroke: #34332f; } .axis, .small { fill: #c3c2b7; } .title, .sub { fill: #f0efec; }
+    .box { fill: #252523; stroke: #3d3c38; } .arrow { stroke: #8a8984; }
+    .s0 { stroke: #3987e5; } .s1 { stroke: #d95926; } .f0 { fill: #3987e5; } .f1 { fill: #d95926; } .f2 { fill: #55544f; }
+    .band { fill: #3987e5; }
+  }
+</style>
+<rect class="bg" width="900" height="250" rx="8"/>
+<text class="title" x="24" y="30">From question to answer</text>
+<rect class="box" x="24" y="52" width="156" height="150" rx="8"/>
+<text class="sub" x="36" y="78">1. Question</text>
+<text class="small" x="36" y="104">“Card spend in Porto</text>
+<text class="small" x="36" y="123">vs last month?”</text>
+<path class="arrow" d="M183 127 h14 m-5 -5 l5 5 l-5 5"/>
+<rect class="box" x="202" y="52" width="156" height="150" rx="8"/>
+<text class="sub" x="214" y="78">2. Understand</text>
+<text class="small" x="214" y="104">KPI: card spend</text>
+<text class="small" x="214" y="123">Period: 1–21 Oct</text>
+<text class="small" x="214" y="142">Only: city = Porto</text>
+<text class="small" x="214" y="161">Compare: 1–21 Sep</text>
+<path class="arrow" d="M361 127 h14 m-5 -5 l5 5 l-5 5"/>
+<rect class="box" x="380" y="52" width="156" height="150" rx="8"/>
+<text class="sub" x="392" y="78">3. Write SQL</text>
+<text class="small" x="392" y="104">From the agreed KPI</text>
+<text class="small" x="392" y="123">definition (kpis.yml).</text>
+<text class="small" x="392" y="142">AI mode: the model</text>
+<text class="small" x="392" y="161">writes it instead.</text>
+<path class="arrow" d="M539 127 h14 m-5 -5 l5 5 l-5 5"/>
+<rect class="box" x="558" y="52" width="156" height="150" rx="8"/>
+<text class="sub" x="570" y="78">4. Run safely</text>
+<text class="small" x="570" y="104">Read-only, SELECT only,</text>
+<text class="small" x="570" y="123">known tables only,</text>
+<text class="small" x="570" y="142">time and row limits.</text>
+<path class="arrow" d="M717 127 h14 m-5 -5 l5 5 l-5 5"/>
+<rect class="box" x="736" y="52" width="156" height="150" rx="8"/>
+<text class="sub" x="748" y="78">5. Answer</text>
+<text class="small" x="748" y="104">€150.0k, down 2.4%,</text>
+<text class="small" x="748" y="123">+ chart, SQL, data and</text>
+<text class="small" x="748" y="142">how it read the question.</text>
+<text class="small" x="24" y="232">If the question is outside what it knows (a forecast, a “why”, an action), it says so instead of guessing.</text>
+</svg>

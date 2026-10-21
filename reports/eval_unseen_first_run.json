@@ -1,0 +1,8 @@
+{
+ "note": "First and only run of eval/holdout2.yml before any fix based on it. These questions were written before the fixes from eval/holdout.yml and never used for tuning. After this run, the failures below were fixed, so later holdout2 scores are no longer 'unseen'.",
+ "clock": "2026-10-21 14:40:00",
+ "in_scope": {"questions": 20, "correct": 14, "declined": 3, "wrong": 3},
+ "out_of_scope": {"questions": 4, "declined": 4},
+ "declined": ["How many people opened an account last month?", "How much money came in yesterday?", "Grocery spend in Braga this week"],
+ "wrong": ["Restaurant spending last month by age group", "Compare ATM cash this month with last month", "How many customers left last year?"]
+}

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 352" width="900" height="352" role="img" aria-label="Card payments by Coimbra customers per hour today against a normal day">
+<style>
+  .bg { fill: #fcfcfb; } .grid { stroke: #e4e3df; stroke-width: 1; }
+  .axis { fill: #52514e; font: 12px system-ui, -apple-system, sans-serif; }
+  .small { fill: #52514e; font: 11.5px system-ui, -apple-system, sans-serif; }
+  .title { fill: #0b0b0b; font: 600 15px system-ui, -apple-system, sans-serif; }
+  .sub { fill: #0b0b0b; font: 600 13px system-ui, -apple-system, sans-serif; }
+  .box { fill: #f3f2ee; stroke: #d6d4cd; stroke-width: 1; } .arrow { stroke: #8a8984; stroke-width: 1.5; fill: none; }
+  .s0 { stroke: #2a78d6; } .s1 { stroke: #eb6834; } .f0 { fill: #2a78d6; } .f1 { fill: #eb6834; }
+  .f2 { fill: #c9c7bf; } .band { fill: #2a78d6; opacity: .12; } .shade { fill: #eb6834; opacity: .08; }
+  .line { fill: none; stroke-width: 2.5; } .dash { stroke-dasharray: 5 4; }
+  .white { fill: #ffffff; font: 600 12px system-ui, -apple-system, sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19; } .grid { stroke: #34332f; } .axis, .small { fill: #c3c2b7; } .title, .sub { fill: #f0efec; }
+    .box { fill: #252523; stroke: #3d3c38; } .arrow { stroke: #8a8984; }
+    .s0 { stroke: #3987e5; } .s1 { stroke: #d95926; } .f0 { fill: #3987e5; } .f1 { fill: #d95926; } .f2 { fill: #55544f; }
+    .band { fill: #3987e5; }
+  }
+</style>
+<rect class="bg" width="900" height="352" rx="8"/>
+<text class="title" x="24" y="28">Alert: card payments by Coimbra customers today vs a normal Wednesday</text>
+<text class="axis" x="24" y="50">4 payments by 14:40, against 24 usually (-83%). The simulator planted a card terminal outage from 08:00.</text>
+<line class="grid" x1="60" x2="870" y1="300" y2="300"/><text class="axis" x="52" y="304" text-anchor="end">0</text>
+<line class="grid" x1="60" x2="870" y1="227" y2="227"/><text class="axis" x="52" y="231" text-anchor="end">20</text>
+<line class="grid" x1="60" x2="870" y1="153" y2="153"/><text class="axis" x="52" y="157" text-anchor="end">40</text>
+<line class="grid" x1="60" x2="870" y1="80" y2="80"/><text class="axis" x="52" y="84" text-anchor="end">60</text>
+<rect class="shade" x="330" y="74" width="225" height="226"/>
+<polygon class="band" points="60,300 94,296 128,296 161,296 195,293 229,293 262,293 296,293 330,289 364,274 398,263 431,249 465,234 499,208 532,183 566,172 600,164 634,164 668,157 701,131 735,117 769,106 802,98 836,98 870,95 870,153 836,157 802,168 769,168 735,179 701,194 668,205 634,223 600,230 566,234 532,245 499,267 465,278 431,278 398,296 364,300 330,300 296,300 262,300 229,300 195,300 161,300 128,300 94,300"/>
+<polyline class="line s0 dash" points="60,300 94,299 128,299 161,299 195,298 229,298 262,298 296,298 330,296 364,289 398,280 431,266 465,260 499,243 532,224 566,208 600,199 634,189 668,182 701,166 735,151 769,140 802,139 836,132 870,129"/>
+<polyline class="line s1" points="60,300 94,296 128,296 161,296 195,296 229,296 262,296 296,293 330,293 364,293 398,293 431,293 465,293 499,285 532,285 555,285"/>
+<text class="axis" x="60" y="318" text-anchor="middle">00:00</text>
+<text class="axis" x="161" y="318" text-anchor="middle">03:00</text>
+<text class="axis" x="262" y="318" text-anchor="middle">06:00</text>
+<text class="axis" x="364" y="318" text-anchor="middle">09:00</text>
+<text class="axis" x="465" y="318" text-anchor="middle">12:00</text>
+<text class="axis" x="566" y="318" text-anchor="middle">15:00</text>
+<text class="axis" x="668" y="318" text-anchor="middle">18:00</text>
+<text class="axis" x="769" y="318" text-anchor="middle">21:00</text>
+<text class="axis" x="870" y="318" text-anchor="middle">24:00</text>
+<line class="s0 line dash" x1="74" x2="98" y1="80" y2="80"/><text class="axis" x="104" y="84">Usual: last 4 Wednesdays (range shaded)</text><line class="s1 line" x1="74" x2="98" y1="100" y2="100"/><text class="axis" x="104" y="104">Today, up to 14:40</text>
+<text class="axis" x="465" y="338" text-anchor="middle">Time of day (payments so far, adding up)</text>
+</svg>
