@@ -111,7 +111,8 @@ def chart(df, spec):
                    y=alt.Y(f"{y}:Q", title=None), tooltip=list(data.columns))
     else:
         base = alt.Chart(data).mark_bar(cornerRadiusEnd=3)
-        enc = dict(y=alt.Y(f"{x}:N", sort="-x" if not color else None, title=None),
+        keep_order = color or spec.get("sort") is False
+        enc = dict(y=alt.Y(f"{x}:N", sort=None if keep_order else "-x", title=None),
                    x=alt.X(f"{y}:Q", title=None), tooltip=list(data.columns))
     if color:
         enc["color"] = alt.Color(f"{color}:N", title=None)
@@ -222,24 +223,25 @@ with tab_ask:
         if cols[i % 3].button(e["question"], key=f"sv{i}", width="stretch"):
             pending = e["question"]
 
-    for m in ss.messages:
-        with st.chat_message(m["role"], avatar="🧑‍💼" if m["role"] == "user" else "🏦"):
-            if m["role"] == "user":
-                st.markdown(m["text"])
-            else:
-                show(m["answer"])
-
+    chat = st.container()          # the conversation sits above the input box
     typed = st.chat_input("Ask about deposits, loans, card spend, customers… e.g. 'card spend in Porto vs last month'")
-    question = typed or pending
-    if question:
-        ss.messages.append({"role": "user", "text": question})
-        with st.chat_message("user", avatar="🧑‍💼"):
-            st.markdown(question)
-        with st.chat_message("assistant", avatar="🏦"):
-            with st.spinner("Writing the query and checking the numbers…"):
-                a = answer(question)
-            show(a)
-        ss.messages.append({"role": "assistant", "answer": a})
+    with chat:
+        for m in ss.messages:
+            with st.chat_message(m["role"], avatar="🧑‍💼" if m["role"] == "user" else "🏦"):
+                if m["role"] == "user":
+                    st.markdown(m["text"])
+                else:
+                    show(m["answer"])
+        question = typed or pending
+        if question:
+            ss.messages.append({"role": "user", "text": question})
+            with st.chat_message("user", avatar="🧑‍💼"):
+                st.markdown(question)
+            with st.chat_message("assistant", avatar="🏦"):
+                with st.spinner("Writing the query and checking the numbers…"):
+                    a = answer(question)
+                show(a)
+            ss.messages.append({"role": "assistant", "answer": a})
 
 with tab_alerts:
     st.markdown("#### What's unusual today and yesterday")
