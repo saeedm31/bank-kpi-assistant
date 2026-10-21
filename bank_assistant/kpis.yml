@@ -1,0 +1,343 @@
+# The bank's KPI definitions: one agreed meaning for each number.
+# Both the built-in engine and the AI model must use these, so the same
+# question always gives the same answer.
+#
+# source    where the metric lives (see `sources` below)
+# value     SQL expression for the metric
+# where     filter that is always part of the metric (optional)
+# unit      eur | count | pct (share) | rate (interest rate)
+# count     id of the "how many" version of this metric (optional)
+
+sources:
+  transactions:
+    from: transactions t
+    time: t.ts
+    time_type: timestamp
+    kind: flow
+    joins:
+      c: JOIN customers c ON c.customer_id = t.customer_id
+      b: JOIN branches b ON b.branch_id = c.branch_id
+  loans:
+    from: loans l
+    time: l.issued_date
+    time_type: date
+    kind: flow
+    joins:
+      c: JOIN customers c ON c.customer_id = l.customer_id
+      b: JOIN branches b ON b.branch_id = c.branch_id
+  new_customers:
+    from: customers c
+    time: c.joined_date
+    time_type: date
+    kind: flow
+    joins:
+      b: JOIN branches b ON b.branch_id = c.branch_id
+  lost_customers:
+    from: customers c
+    time: c.closed_date
+    time_type: date
+    kind: flow
+    joins:
+      b: JOIN branches b ON b.branch_id = c.branch_id
+  new_accounts:
+    from: accounts a
+    time: a.opened_date
+    time_type: date
+    kind: flow
+    joins:
+      c: JOIN customers c ON c.customer_id = a.customer_id
+      b: JOIN branches b ON b.branch_id = c.branch_id
+  balances:
+    from: balance_snapshots s JOIN accounts a ON a.account_id = s.account_id
+    time: s.snapshot_date
+    time_type: date
+    kind: snapshot
+    table: balance_snapshots
+    joins:
+      c: JOIN customers c ON c.customer_id = a.customer_id
+      b: JOIN branches b ON b.branch_id = c.branch_id
+  loan_book:
+    from: loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id
+    time: s.snapshot_date
+    time_type: date
+    kind: snapshot
+    table: loan_snapshots
+    joins:
+      c: JOIN customers c ON c.customer_id = l.customer_id
+      b: JOIN branches b ON b.branch_id = c.branch_id
+
+dimensions:
+  branch:   {label: Branch, expr: b.name, needs: b, words: [branch, branches]}
+  city:     {label: City, expr: b.city, needs: b, words: [city, cities, town]}
+  region:   {label: Region, expr: b.region, needs: b, words: [region, regions, area]}
+  segment:  {label: Segment, expr: c.segment, needs: c, words: [segment, segments, customer type, customer types, customer segment, client type]}
+  age_band: {label: Age band, expr: c.age_band, needs: c, words: [age, ages, age band, age bands, age group, age groups]}
+  channel:  {label: Channel, expr: t.channel, sources: [transactions], words: [channel, channels]}
+  type:     {label: Transaction type, expr: t.type, sources: [transactions], words: [transaction type, transaction types, payment type, payment types, type]}
+  category: {label: Merchant category, expr: t.merchant_category, sources: [transactions], words: [category, categories, merchant category, merchant categories, merchant type, spending category]}
+  account_product: {label: Account type, expr: a.product, sources: [balances, new_accounts], words: [product, products, account type, account types]}
+  loan_product:    {label: Loan type, expr: l.product, sources: [loans, loan_book], words: [product, products, loan type, loan types, loan product]}
+
+# Words people use for values, when they differ from the value itself
+value_aliases:
+  Lisboa: [lisbon]
+  Norte: [north, northern portugal]
+  Centro: [centre, center, central portugal]
+  Algarve: [south]
+  Porto: [oporto]
+  App: [mobile app, mobile, app]
+  Web: [online banking, website, internet banking, web]
+  Branch: [in branch, at the branch, counter]
+  Card payment: []
+  Mortgage: [mortgages, home loan, home loans, housing loan, housing loans]
+  Groceries: [grocery, supermarket, supermarkets, food shopping]
+  Restaurants: [restaurant, eating out, dining, cafes]
+  Travel: [holidays, hotels, flights, trips]
+  Fuel: [petrol, gas stations, diesel]
+  Online shopping: [online purchases, e-commerce, ecommerce, internet shopping]
+  Home & DIY: [home and diy, diy, home improvement]
+  Entertainment: [leisure, cinema]
+  Personal loan: [personal loans, consumer loan, consumer loans, consumer credit]
+  Car loan: [car loans, auto loan, auto loans]
+  Business loan: [business loans, company loans, sme loans]
+  Savings account: [savings accounts, savings]
+  Term deposit: [term deposits, time deposit, time deposits, fixed deposit, fixed deposits]
+  Current account: [current accounts, checking account, checking accounts]
+  Retail: [retail customers, individuals, personal customers]
+  Premium: [premium customers, wealthy customers, affluent]
+  Business: [business customers, companies, firms, smes]
+  "65+": [over 65, seniors, older customers, retirees, pensioners]
+  "18-24": [young customers, students, under 25]
+
+metrics:
+  card_spend:
+    label: Card spend
+    words: [card spend, card spending, spending on cards, spend on cards, card purchases, card sales, card payment value, card payments value, value of card payments, spent by card, spent on cards, spending, spend]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.type = 'Card payment'
+    unit: eur
+    count: card_payments
+    definition: Total value of card payments made by customers.
+  card_payments:
+    label: Card payments
+    words: [number of card payments, card transactions, card payment count]
+    source: transactions
+    value: COUNT(*)
+    where: t.type = 'Card payment'
+    unit: count
+    definition: Number of card payments.
+  avg_card_payment:
+    label: Average card payment
+    words: [average card payment, average card spend, average ticket, average purchase, average basket, average transaction value]
+    source: transactions
+    value: AVG(t.amount)
+    where: t.type = 'Card payment'
+    unit: eur
+    definition: Average value of one card payment.
+  atm_cash:
+    label: ATM cash withdrawn
+    words: [atm cash, cash withdrawals, cash withdrawn, cash was withdrawn, atm, cash taken out, atm cash withdrawn]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.type = 'ATM withdrawal'
+    unit: eur
+    count: atm_count
+    definition: Total cash taken out at ATMs.
+  atm_count:
+    label: ATM withdrawals
+    words: [atm withdrawals, number of atm withdrawals, atm transactions, withdrawals]
+    source: transactions
+    value: COUNT(*)
+    where: t.type = 'ATM withdrawal'
+    unit: count
+    definition: Number of ATM cash withdrawals.
+  transfers_out:
+    label: Transfers out
+    words: [transfers out, outgoing transfers, money transferred out, money sent, transfers sent, transfers, payments sent]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.type = 'Transfer out'
+    unit: eur
+    count: transfers_out_count
+    definition: Total value of transfers customers sent (app, web or branch).
+  transfers_out_count:
+    label: Number of transfers out
+    words: [number of transfers]
+    source: transactions
+    value: COUNT(*)
+    where: t.type = 'Transfer out'
+    unit: count
+    definition: Number of transfers customers sent.
+  salaries_in:
+    label: Salaries and pensions received
+    words: [salaries, salary, salary payments, salaries received, pensions, wages, payroll, salary inflow]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.type IN ('Salary', 'Pension')
+    unit: eur
+    definition: Total salaries and pensions paid into customers' accounts.
+  money_in:
+    label: Money in
+    words: [money in, inflows, inflow, money received, incoming payments, total inflows, money came in, came in, money coming in]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.direction = 'in'
+    unit: eur
+    definition: All money paid into current accounts.
+  money_out:
+    label: Money out
+    words: [money out, outflows, outflow, outgoing payments, total outflows]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.direction = 'out'
+    unit: eur
+    definition: All money paid out of current accounts.
+  net_flow:
+    label: Net inflow
+    words: [net inflow, net inflows, net flow, net flows, net money in, net cash flow, net deposits, net new money]
+    source: transactions
+    value: SUM(CASE WHEN t.direction = 'in' THEN t.amount ELSE -t.amount END)
+    unit: eur
+    definition: Money in minus money out. Positive means customers brought more money in than they took out.
+  fee_income:
+    label: Fee income
+    words: [fee income, fees, fees earned, fee revenue, account fees, commissions]
+    source: transactions
+    value: SUM(t.amount)
+    where: t.type = 'Fee'
+    unit: eur
+    definition: Account fees charged to customers.
+  transactions_count:
+    label: Transactions
+    words: [number of transactions, transactions, transaction count, payments, number of payments, transaction volume]
+    source: transactions
+    value: COUNT(*)
+    unit: count
+    definition: Number of transactions of any type.
+  active_customers:
+    label: Active customers
+    words: [active customers, active clients, active users, engaged customers]
+    source: transactions
+    value: COUNT(DISTINCT t.customer_id)
+    where: t.channel <> 'Automatic'
+    unit: count
+    definition: Customers who made at least one payment themselves (card, ATM, app, web or branch) in the period. Salary and direct debits alone do not count.
+  app_users:
+    label: Active app users
+    words: [app users, active app users, mobile users, users of the app, use the app, uses the app, using the app, app usage]
+    source: transactions
+    value: COUNT(DISTINCT t.customer_id)
+    where: t.channel = 'App'
+    unit: count
+    definition: Customers who sent at least one transfer in the mobile app in the period.
+  digital_share:
+    label: Digital share of transfers
+    words: [digital share, digital adoption, share of digital transfers, digital transfers share, online share, share done online, share in the app, app share, share of transfers, share of transfers done in the app, share of transfers made in the app, share of transfers done online]
+    source: transactions
+    value: 100.0 * SUM(t.channel IN ('App', 'Web')) / COUNT(*)
+    where: t.type = 'Transfer out'
+    unit: pct
+    definition: Share of transfers sent in the app or on the web instead of at a branch.
+  new_customers:
+    label: New customers
+    words: [new customers, new clients, customers joined, customers who joined, customer acquisition, acquisitions, joiners, sign ups, signups]
+    source: new_customers
+    value: COUNT(*)
+    unit: count
+    definition: Customers who joined in the period.
+  customers_lost:
+    label: Customers lost
+    words: [customers lost, lost customers, customers who left, customers left, closed customers, churned customers, churn, leavers, attrition]
+    source: lost_customers
+    value: COUNT(*)
+    unit: count
+    definition: Customers who closed all their accounts in the period.
+  new_accounts:
+    label: New accounts
+    words: [new accounts, accounts opened, account openings, opened accounts, opened an account, open an account, opened a new account]
+    source: new_accounts
+    value: COUNT(*)
+    unit: count
+    definition: Accounts opened in the period.
+  total_deposits:
+    label: Total deposits
+    words: [total deposits, deposits, deposit balance, deposit balances, customer deposits, balances, money held, deposit base]
+    source: balances
+    value: SUM(s.balance)
+    unit: eur
+    definition: Sum of all account balances on the day (end of month, or today for this month).
+  avg_balance:
+    label: Average balance
+    words: [average balance, average deposit, mean balance, average account balance]
+    source: balances
+    value: AVG(s.balance)
+    unit: eur
+    definition: Average balance per open account on the day.
+  customer_count:
+    label: Customers
+    words: [number of customers, customer count, total customers, customer base, customers do we have, customers we have, customers are there, customers have we got, clients do we have]
+    source: balances
+    value: COUNT(DISTINCT a.customer_id)
+    where: a.product = 'Current account'
+    unit: count
+    definition: Customers with an open current account on the day.
+  loan_book:
+    label: Loan book
+    words: [loan book, outstanding loans, loans outstanding, outstanding balance, lending book, total lending, loan portfolio, credit portfolio, total loans, book, portfolio]
+    source: loan_book
+    value: SUM(s.outstanding)
+    unit: eur
+    count: live_loans
+    definition: Amount still owed on all loans on the day.
+  live_loans:
+    label: Number of loans
+    words: [number of loans, loan count, live loans, active loans]
+    source: loan_book
+    value: COUNT(*)
+    unit: count
+    definition: Loans not yet repaid on the day.
+  npl_ratio:
+    label: NPL ratio
+    words: [npl ratio, npl, non performing loans, non-performing loans, nonperforming loans, bad loans, default rate, npl rate]
+    source: loan_book
+    value: 100.0 * SUM(CASE WHEN s.days_past_due > 90 THEN s.outstanding ELSE 0 END) / SUM(s.outstanding)
+    unit: pct
+    definition: Share of the loan book (by amount) more than 90 days late.
+  loans_in_default:
+    label: Loans in default
+    words: [loans in default, defaulted loans, loans defaulted, number of defaults, defaults, loans over 90 days late, in default, default]
+    source: loan_book
+    value: COUNT(*)
+    where: s.days_past_due > 90
+    unit: count
+    definition: Number of loans more than 90 days late on the day.
+  late_rate:
+    label: Late loan rate (30+ days)
+    words: [late payments, late loans, loans in arrears, arrears, delinquency, delinquency rate, past due, overdue loans, late rate, loans late]
+    source: loan_book
+    value: 100.0 * AVG(s.days_past_due > 30)
+    unit: pct
+    definition: Share of loans (by number) more than 30 days late.
+  loans_issued:
+    label: New lending
+    words: [new lending, loans issued, new loans, loan origination, originations, amount lent, lending, loans granted, credit granted, issue, issued, lend, lent, granted]
+    source: loans
+    value: SUM(l.principal)
+    unit: eur
+    count: loans_issued_count
+    definition: Total amount of new loans issued in the period.
+  loans_issued_count:
+    label: Number of loans issued
+    words: [number of new loans, number of loans issued]
+    source: loans
+    value: COUNT(*)
+    unit: count
+    definition: Number of new loans issued in the period.
+  avg_rate_new:
+    label: Average rate on new loans
+    words: [interest rate, interest rates, average interest rate, average rate, rate on new loans, lending rate, loan rate, pricing]
+    source: loans
+    value: AVG(l.interest_rate)
+    unit: rate
+    definition: Average yearly interest rate on loans issued in the period.
