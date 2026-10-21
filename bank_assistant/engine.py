@@ -553,16 +553,20 @@ class Engine:
             return text, df, {"kind": "bar", "x": x, "y": col}
         if grain and not dims:
             x = df.columns[0]
-            first, last = df.iloc[0], df.iloc[-1]
-            peak = df.loc[df[col].idxmax()]
-            low = df.loc[df[col].idxmin()]
+            # a period that is still running (this month so far) would distort the comparison: leave it out
+            running = q.period.partial and grain in ("month", "week", "day", "quarter", "year") and not snapshot \
+                and len(df) > 2 and unit in ("eur", "count")
+            full = df.iloc[:-1] if running else df
+            first, last = full.iloc[0], full.iloc[-1]
+            peak = full.loc[full[col].idxmax()]
+            low = full.loc[full[col].idxmin()]
             change = _change(last[col], first[col], unit)
             text = (f"{label} went from **{fmt(first[col], unit)}** ({_lab(first[x], grain)}) to "
                     f"**{fmt(last[col], unit)}** ({_lab(last[x], grain)}){change}. "
                     f"Highest: {_lab(peak[x], grain)} ({fmt(peak[col], unit)}); lowest: {_lab(low[x], grain)} "
                     f"({fmt(low[col], unit)}).")
-            if q.period.partial and grain in ("month", "week", "day", "quarter", "year") and not snapshot:
-                text += f" The last {grain} is not over yet."
+            if running:
+                text += f" This {grain} so far ({_lab(df.iloc[-1][x], grain)}, not over yet): {fmt(df.iloc[-1][col], unit)}."
             return text, df, {"kind": "line", "x": x, "y": col}
         if grain and dims:
             x, color = df.columns[0], df.columns[1]
@@ -612,8 +616,9 @@ class Engine:
                 text += f"; there is no data for {prev_label} to compare with."
             else:
                 text += f", {_diff_words(a, b, unit)} {prev_label} ({fmt(b, unit)})."
-            table = pd.DataFrame({"period": [when, prev_label], label: [a, b]})
-            return text, table, {"kind": "bar", "x": "period", "y": label}
+            short = re.sub(r"\s*\(.*\)$", "", prev_label)
+            table = pd.DataFrame({"period": [_when(when), short], label: [a, b]})
+            return text, table, {"kind": "bar", "x": "period", "y": label, "sort": False}
         x = cur.columns[0]
         m = cur.merge(old, on=x, how="outer", suffixes=("", "_before"))
         m["change_%"] = (100 * (m[col] - m[f"{col}_before"]) / m[f"{col}_before"].abs()).round(1)
