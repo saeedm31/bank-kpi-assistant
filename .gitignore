@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.sqlite
+*.sqlite-*
+.env
+.streamlit/secrets.toml
