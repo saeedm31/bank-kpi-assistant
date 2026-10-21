@@ -1,0 +1,247 @@
+# Test questions with hand-written correct SQL ("gold").
+# All dates assume the evaluation clock: Wednesday 21 October 2026, 14:40 (Lisbon).
+# A question is answered correctly when the numbers in the engine's result match the gold result.
+# Out-of-scope questions are correct when the engine declines instead of guessing.
+
+now: "2026-10-21 14:40:00"
+
+in_scope:
+  - q: What is card spend this month?
+    gold: |
+      SELECT SUM(amount) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-10-01 00:00:00' AND ts < '2026-10-21 14:40:00'
+
+  - q: Card spend by branch last month
+    gold: |
+      SELECT b.name, SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'Card payment' AND t.ts >= '2026-09-01' AND t.ts < '2026-10-01'
+      GROUP BY b.name
+
+  - q: How many new customers joined this year?
+    gold: SELECT COUNT(*) FROM customers WHERE joined_date >= '2026-01-01' AND joined_date <= '2026-10-21'
+
+  - q: What's the NPL ratio?
+    gold: |
+      SELECT 100.0 * SUM(CASE WHEN days_past_due > 90 THEN outstanding ELSE 0 END) / SUM(outstanding)
+      FROM loan_snapshots WHERE snapshot_date = '2026-10-21'
+
+  - q: NPL ratio by region
+    gold: |
+      SELECT b.region, 100.0 * SUM(CASE WHEN s.days_past_due > 90 THEN s.outstanding ELSE 0 END) / SUM(s.outstanding)
+      FROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id
+      JOIN customers c ON c.customer_id = l.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE s.snapshot_date = '2026-10-21' GROUP BY b.region
+
+  - q: Show the loan book over time
+    gold: |
+      SELECT snapshot_date, SUM(outstanding) FROM loan_snapshots
+      WHERE snapshot_date >= '2024-11-01' GROUP BY snapshot_date
+
+  - q: Card spend vs last month
+    gold: |
+      SELECT 'current', SUM(amount) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-10-01' AND ts < '2026-10-21 14:40:00'
+      UNION ALL
+      SELECT 'previous', SUM(amount) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-09-01' AND ts < '2026-09-21 14:40:00'
+
+  - q: Which branch has the most ATM withdrawals?
+    gold: |
+      SELECT b.name, COUNT(*) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'ATM withdrawal' AND t.ts >= '2026-10-01' AND t.ts < '2026-10-21 14:40:00'
+      GROUP BY b.name
+
+  - q: Net inflow by month
+    gold: |
+      SELECT substr(ts, 1, 7), SUM(CASE WHEN direction = 'in' THEN amount ELSE -amount END) FROM transactions
+      WHERE ts >= '2025-11-01' AND ts < '2026-10-21 14:40:00' GROUP BY 1
+
+  - q: Total deposits by segment
+    gold: |
+      SELECT c.segment, SUM(s.balance) FROM balance_snapshots s
+      JOIN accounts a ON a.account_id = s.account_id JOIN customers c ON c.customer_id = a.customer_id
+      WHERE s.snapshot_date = '2026-10-21' GROUP BY c.segment
+
+  - q: How many card payments today?
+    gold: |
+      SELECT COUNT(*) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-10-21' AND ts < '2026-10-21 14:40:00'
+
+  - q: Card spend today by hour
+    gold: |
+      SELECT substr(ts, 12, 2), SUM(amount) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-10-21' AND ts < '2026-10-21 14:40:00' GROUP BY 1
+
+  - q: Late payments on personal loans by region
+    gold: |
+      SELECT b.region, 100.0 * AVG(s.days_past_due > 30)
+      FROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id
+      JOIN customers c ON c.customer_id = l.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE s.snapshot_date = '2026-10-21' AND l.product = 'Personal loan' GROUP BY b.region
+
+  - q: Average interest rate on mortgages by quarter
+    gold: |
+      SELECT substr(issued_date, 1, 4) || ((CAST(substr(issued_date, 6, 2) AS INTEGER) + 2) / 3), AVG(interest_rate)
+      FROM loans WHERE product = 'Mortgage' AND issued_date >= '2024-11-01' AND issued_date <= '2026-10-21'
+      GROUP BY 1
+
+  - q: Digital share of transfers by age band this year
+    gold: |
+      SELECT c.age_band, 100.0 * SUM(t.channel IN ('App', 'Web')) / COUNT(*)
+      FROM transactions t JOIN customers c ON c.customer_id = t.customer_id
+      WHERE t.type = 'Transfer out' AND t.ts >= '2026-01-01' AND t.ts < '2026-10-21 14:40:00'
+      GROUP BY c.age_band
+
+  - q: What share of transfers are done in the app by region?
+    gold: |
+      SELECT b.region, 100.0 * SUM(t.channel IN ('App', 'Web')) / COUNT(*)
+      FROM transactions t JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'Transfer out' AND t.ts >= '2026-10-01' AND t.ts < '2026-10-21 14:40:00'
+      GROUP BY b.region
+
+  - q: Top 3 merchant categories by card spend in August
+    gold: |
+      SELECT merchant_category, SUM(amount) AS v FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-08-01' AND ts < '2026-09-01'
+      GROUP BY merchant_category ORDER BY v DESC LIMIT 3
+
+  - q: Fee income year on year
+    gold: |
+      SELECT 'current', SUM(amount) FROM transactions
+      WHERE type = 'Fee' AND ts >= '2026-10-01' AND ts < '2026-10-21 14:40:00'
+      UNION ALL
+      SELECT 'previous', SUM(amount) FROM transactions
+      WHERE type = 'Fee' AND ts >= '2025-10-01' AND ts < '2025-10-21 14:40:00'
+
+  - q: How many customers do we have?
+    gold: |
+      SELECT COUNT(DISTINCT a.customer_id) FROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id
+      WHERE s.snapshot_date = '2026-10-21' AND a.product = 'Current account'
+
+  - q: Active app users last week
+    gold: |
+      SELECT COUNT(DISTINCT customer_id) FROM transactions
+      WHERE channel = 'App' AND ts >= '2026-10-12' AND ts < '2026-10-19'
+
+  - q: New lending in Q2 2026 by loan type
+    gold: |
+      SELECT product, SUM(principal) FROM loans
+      WHERE issued_date >= '2026-04-01' AND issued_date < '2026-07-01' GROUP BY product
+
+  - q: How much cash was withdrawn at ATMs in Faro yesterday?
+    gold: |
+      SELECT SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'ATM withdrawal' AND b.city = 'Faro' AND t.ts >= '2026-10-20' AND t.ts < '2026-10-21'
+
+  - q: Salaries received since March
+    gold: |
+      SELECT SUM(amount) FROM transactions
+      WHERE type IN ('Salary', 'Pension') AND ts >= '2026-03-01' AND ts < '2026-10-21 14:40:00'
+
+  - q: Customers lost by month this year
+    gold: |
+      SELECT substr(closed_date, 1, 7), COUNT(*) FROM customers
+      WHERE closed_date >= '2026-01-01' AND closed_date <= '2026-10-21' GROUP BY 1
+
+  - q: Active customers in the last 30 days
+    gold: |
+      SELECT COUNT(DISTINCT customer_id) FROM transactions
+      WHERE channel <> 'Automatic' AND ts >= '2026-09-21 14:40:00' AND ts < '2026-10-21 14:40:00'
+
+  - q: Average balance of savings accounts
+    gold: |
+      SELECT AVG(s.balance) FROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id
+      WHERE s.snapshot_date = '2026-10-21' AND a.product = 'Savings account'
+
+  - q: Total deposits in the Algarve vs last year
+    gold: |
+      SELECT d, SUM(s.balance) FROM (SELECT '2026-10-21' AS d UNION ALL SELECT '2025-09-30') x
+      JOIN balance_snapshots s ON s.snapshot_date = x.d
+      JOIN accounts a ON a.account_id = s.account_id JOIN customers c ON c.customer_id = a.customer_id
+      JOIN branches b ON b.branch_id = c.branch_id
+      WHERE b.region = 'Algarve' GROUP BY d
+
+  - q: Loans issued this year vs last year
+    gold: |
+      SELECT 'current', SUM(principal) FROM loans WHERE issued_date >= '2026-01-01' AND issued_date <= '2026-10-21'
+      UNION ALL
+      SELECT 'previous', SUM(principal) FROM loans WHERE issued_date >= '2025-01-01' AND issued_date <= '2025-10-21'
+
+  - q: Card spend by category and segment last month
+    gold: |
+      SELECT t.merchant_category, c.segment, SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id
+      WHERE t.type = 'Card payment' AND t.ts >= '2026-09-01' AND t.ts < '2026-10-01'
+      GROUP BY 1, 2
+
+  - q: Weekly card payments
+    gold: |
+      SELECT date(ts, 'weekday 0', '-6 days'), COUNT(*) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-08-03' AND ts < '2026-10-21 14:40:00' GROUP BY 1
+
+  - q: Daily transfers out in the last 30 days
+    gold: |
+      SELECT substr(ts, 1, 10), SUM(amount) FROM transactions
+      WHERE type = 'Transfer out' AND ts >= '2026-09-21 14:40:00' AND ts < '2026-10-21 14:40:00' GROUP BY 1
+
+  - q: Interest rates on new loans this year by loan type
+    gold: |
+      SELECT product, AVG(interest_rate) FROM loans
+      WHERE issued_date >= '2026-01-01' AND issued_date <= '2026-10-21' GROUP BY product
+
+  - q: Card spend in Porto this week vs last week
+    gold: |
+      SELECT 'current', SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'Card payment' AND b.city = 'Porto' AND t.ts >= '2026-10-19' AND t.ts < '2026-10-21 14:40:00'
+      UNION ALL
+      SELECT 'previous', SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'Card payment' AND b.city = 'Porto' AND t.ts >= '2026-10-12' AND t.ts < '2026-10-14 14:40:00'
+
+  - q: What was the loan book at the end of 2025?
+    gold: SELECT SUM(outstanding) FROM loan_snapshots WHERE snapshot_date = '2025-12-31'
+
+  - q: Fee income by segment in 2025
+    gold: |
+      SELECT c.segment, SUM(t.amount) FROM transactions t JOIN customers c ON c.customer_id = t.customer_id
+      WHERE t.type = 'Fee' AND t.ts >= '2025-01-01' AND t.ts < '2026-01-01' GROUP BY c.segment
+
+  - q: New accounts by account type this year
+    gold: |
+      SELECT product, COUNT(*) FROM accounts
+      WHERE opened_date >= '2026-01-01' AND opened_date <= '2026-10-21' GROUP BY product
+
+  - q: Total deposits by month
+    gold: |
+      SELECT snapshot_date, SUM(balance) FROM balance_snapshots
+      WHERE snapshot_date >= '2024-11-01' GROUP BY snapshot_date
+
+  - q: Card spend of premium customers in Lisbon last month
+    gold: |
+      SELECT SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'Card payment' AND c.segment = 'Premium' AND b.city = 'Lisboa'
+        AND t.ts >= '2026-09-01' AND t.ts < '2026-10-01'
+
+  - q: How many mortgages did we issue in 2025?
+    gold: SELECT COUNT(*) FROM loans WHERE product = 'Mortgage' AND issued_date >= '2025-01-01' AND issued_date < '2026-01-01'
+
+  - q: ATM cash by region yesterday
+    gold: |
+      SELECT b.region, SUM(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'ATM withdrawal' AND t.ts >= '2026-10-20' AND t.ts < '2026-10-21' GROUP BY b.region
+
+out_of_scope:
+  - Which customers are likely to leave next month?
+  - Why did card spend fall in Coimbra?
+  - Forecast deposits for next quarter
+  - What's the weather in Porto?
+  - Who is our best branch manager?
+  - Show customers who have a mortgage but no savings account
+  - What is the correlation between age and card spend?
+  - Tell me a joke

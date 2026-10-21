@@ -1,0 +1,113 @@
+# Unseen questions: written after the engine was tuned on questions.yml, and not used to tune it.
+# Their score shows how the built-in engine copes with new wording. Same clock as questions.yml.
+
+now: "2026-10-21 14:40:00"
+
+in_scope:
+  - q: How much did customers spend on cards in September?
+    gold: |
+      SELECT SUM(amount) FROM transactions
+      WHERE type = 'Card payment' AND ts >= '2026-09-01' AND ts < '2026-10-01'
+
+  - q: Total value of transfers sent last week
+    gold: |
+      SELECT SUM(amount) FROM transactions
+      WHERE type = 'Transfer out' AND ts >= '2026-10-12' AND ts < '2026-10-19'
+
+  - q: What's our deposit base by region?
+    gold: |
+      SELECT b.region, SUM(s.balance) FROM balance_snapshots s
+      JOIN accounts a ON a.account_id = s.account_id JOIN customers c ON c.customer_id = a.customer_id
+      JOIN branches b ON b.branch_id = c.branch_id
+      WHERE s.snapshot_date = '2026-10-21' GROUP BY b.region
+
+  - q: Number of new clients per month in 2025
+    gold: |
+      SELECT substr(joined_date, 1, 7), COUNT(*) FROM customers
+      WHERE joined_date >= '2025-01-01' AND joined_date < '2026-01-01' GROUP BY 1
+
+  - q: How many loans are in default?
+    gold: SELECT COUNT(*) FROM loan_snapshots WHERE snapshot_date = '2026-10-21' AND days_past_due > 90
+
+  - q: Average card payment in Faro this year
+    gold: |
+      SELECT AVG(t.amount) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'Card payment' AND b.city = 'Faro' AND t.ts >= '2026-01-01' AND t.ts < '2026-10-21 14:40:00'
+
+  - q: How did the NPL ratio change since last month?
+    gold: |
+      SELECT snapshot_date, 100.0 * SUM(CASE WHEN days_past_due > 90 THEN outstanding ELSE 0 END) / SUM(outstanding)
+      FROM loan_snapshots WHERE snapshot_date IN ('2026-10-21', '2026-09-30') GROUP BY snapshot_date
+
+  - q: Card spend on travel this summer
+    gold: |
+      SELECT SUM(amount) FROM transactions
+      WHERE type = 'Card payment' AND merchant_category = 'Travel' AND ts >= '2026-06-01' AND ts < '2026-09-01'
+
+  - q: Which age group uses the app most?
+    gold: |
+      SELECT c.age_band, COUNT(DISTINCT t.customer_id) FROM transactions t JOIN customers c ON c.customer_id = t.customer_id
+      WHERE t.channel = 'App' AND t.ts >= '2026-10-01' AND t.ts < '2026-10-21 14:40:00' GROUP BY c.age_band
+
+  - q: ATM withdrawals in Lisbon over the last 7 days
+    gold: |
+      SELECT COUNT(*) FROM transactions t
+      JOIN customers c ON c.customer_id = t.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE t.type = 'ATM withdrawal' AND b.city = 'Lisboa' AND t.ts >= '2026-10-14 14:40:00' AND t.ts < '2026-10-21 14:40:00'
+
+  - q: Show me fee income for business customers this quarter
+    gold: |
+      SELECT SUM(t.amount) FROM transactions t JOIN customers c ON c.customer_id = t.customer_id
+      WHERE t.type = 'Fee' AND c.segment = 'Business' AND t.ts >= '2026-10-01' AND t.ts < '2026-10-21 14:40:00'
+
+  - q: Mortgage book by branch
+    gold: |
+      SELECT b.name, SUM(s.outstanding) FROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id
+      JOIN customers c ON c.customer_id = l.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE s.snapshot_date = '2026-10-21' AND l.product = 'Mortgage' GROUP BY b.name
+
+  - q: Outstanding loans by product
+    gold: |
+      SELECT l.product, SUM(s.outstanding) FROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id
+      WHERE s.snapshot_date = '2026-10-21' GROUP BY l.product
+
+  - q: What percentage of transfers were made at a branch last month?
+    gold: |
+      SELECT 100.0 * SUM(channel = 'Branch') / COUNT(*) FROM transactions
+      WHERE type = 'Transfer out' AND ts >= '2026-09-01' AND ts < '2026-10-01'
+
+  - q: Customers who left in Q3
+    gold: SELECT COUNT(*) FROM customers WHERE closed_date >= '2026-07-01' AND closed_date < '2026-10-01'
+
+  - q: Average interest rate on car loans issued this year
+    gold: |
+      SELECT AVG(interest_rate) FROM loans
+      WHERE product = 'Car loan' AND issued_date >= '2026-01-01' AND issued_date <= '2026-10-21'
+
+  - q: Salary inflows year to date
+    gold: |
+      SELECT SUM(amount) FROM transactions
+      WHERE type IN ('Salary', 'Pension') AND ts >= '2026-01-01' AND ts < '2026-10-21 14:40:00'
+
+  - q: How many active customers did we have in March?
+    gold: |
+      SELECT COUNT(DISTINCT customer_id) FROM transactions
+      WHERE channel <> 'Automatic' AND ts >= '2026-03-01' AND ts < '2026-04-01'
+
+  - q: Money out by transaction type in the past week
+    gold: |
+      SELECT type, SUM(amount) FROM transactions
+      WHERE direction = 'out' AND ts >= '2026-10-14 14:40:00' AND ts < '2026-10-21 14:40:00' GROUP BY type
+
+  - q: Late loans in Lisbon
+    gold: |
+      SELECT 100.0 * AVG(s.days_past_due > 30) FROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id
+      JOIN customers c ON c.customer_id = l.customer_id JOIN branches b ON b.branch_id = c.branch_id
+      WHERE s.snapshot_date = '2026-10-21' AND b.city = 'Lisboa'
+
+out_of_scope:
+  - Which branch manager should get a bonus?
+  - Predict next month's card spend
+  - Send an email to customers in Faro
+  - Delete all closed accounts
