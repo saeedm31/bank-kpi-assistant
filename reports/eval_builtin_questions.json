@@ -1,0 +1,355 @@
+{
+ "summary": {
+  "mode": "built-in",
+  "set": "questions",
+  "clock": "2026-10-21 14:40:00",
+  "in_scope": {
+   "questions": 40,
+   "correct": 40,
+   "declined": 0
+  },
+  "out_of_scope": {
+   "questions": 8,
+   "declined": 8
+  },
+  "wrong_answers": 0
+ },
+ "questions": [
+  {
+   "question": "What is card spend this month?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT SUM(t.amount) AS card_spend\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-10-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'"
+  },
+  {
+   "question": "Card spend by branch last month",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT b.name AS \"branch\",\n       SUM(t.amount) AS card_spend\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-09-01 00:00:00' AND t.ts < '2026-10-01 00:00:00'\nGROUP BY b.name\nORDER BY card_spend DESC"
+  },
+  {
+   "question": "How many new customers joined this year?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT COUNT(*) AS new_customers\nFROM customers c\nWHERE c.joined_date >= '2026-01-01' AND c.joined_date < '2026-10-22'"
+  },
+  {
+   "question": "What's the NPL ratio?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT 100.0 * SUM(CASE WHEN s.days_past_due > 90 THEN s.outstanding ELSE 0 END) / SUM(s.outstanding) AS npl_ratio\nFROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id\nWHERE s.snapshot_date = '2026-10-21'"
+  },
+  {
+   "question": "NPL ratio by region",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT b.region AS \"region\",\n       100.0 * SUM(CASE WHEN s.days_past_due > 90 THEN s.outstanding ELSE 0 END) / SUM(s.outstanding) AS npl_ratio\nFROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id\nJOIN customers c ON c.customer_id = l.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE s.snapshot_date = '2026-10-21'\nGROUP BY b.region\nORDER BY npl_ratio DESC"
+  },
+  {
+   "question": "Show the loan book over time",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT s.snapshot_date AS \"date\",\n       SUM(s.outstanding) AS loan_book\nFROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id\nWHERE s.snapshot_date >= '2024-11-01' AND s.snapshot_date < '2026-10-22'\nGROUP BY s.snapshot_date\nORDER BY s.snapshot_date"
+  },
+  {
+   "question": "Card spend vs last month",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT 'current' AS period,\n       SUM(t.amount) AS card_spend\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-10-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nUNION ALL\nSELECT 'previous' AS period,\n       SUM(t.amount) AS card_spend\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-09-01 00:00:00' AND t.ts < '2026-09-21 14:40:00'"
+  },
+  {
+   "question": "Which branch has the most ATM withdrawals?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT b.name AS \"branch\",\n       COUNT(*) AS atm_count\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'ATM withdrawal'\n  AND t.ts >= '2026-10-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY b.name\nORDER BY atm_count DESC"
+  },
+  {
+   "question": "Net inflow by month",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT substr(t.ts, 1, 7) AS \"month\",\n       SUM(CASE WHEN t.direction = 'in' THEN t.amount ELSE -t.amount END) AS net_flow\nFROM transactions t\nWHERE t.ts >= '2025-11-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY substr(t.ts, 1, 7)\nORDER BY substr(t.ts, 1, 7)"
+  },
+  {
+   "question": "Total deposits by segment",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT c.segment AS \"segment\",\n       SUM(s.balance) AS total_deposits\nFROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id\nJOIN customers c ON c.customer_id = a.customer_id\nWHERE s.snapshot_date = '2026-10-21'\nGROUP BY c.segment\nORDER BY total_deposits DESC"
+  },
+  {
+   "question": "How many card payments today?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT COUNT(*) AS card_payments\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-10-21 00:00:00' AND t.ts < '2026-10-21 14:40:00'"
+  },
+  {
+   "question": "Card spend today by hour",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT substr(t.ts, 12, 2) || ':00' AS \"hour\",\n       SUM(t.amount) AS card_spend\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-10-21 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY substr(t.ts, 12, 2) || ':00'\nORDER BY substr(t.ts, 12, 2) || ':00'"
+  },
+  {
+   "question": "Late payments on personal loans by region",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT b.region AS \"region\",\n       100.0 * AVG(s.days_past_due > 30) AS late_rate\nFROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id\nJOIN customers c ON c.customer_id = l.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE s.snapshot_date = '2026-10-21'\n  AND l.product = 'Personal loan'\nGROUP BY b.region\nORDER BY late_rate DESC"
+  },
+  {
+   "question": "Average interest rate on mortgages by quarter",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT substr(l.issued_date, 1, 4) || '-Q' || ((CAST(substr(l.issued_date, 6, 2) AS INTEGER) + 2) / 3) AS \"quarter\",\n       AVG(l.interest_rate) AS avg_rate_new\nFROM loans l\nWHERE l.issued_date >= '2024-11-01' AND l.issued_date < '2026-10-22'\n  AND l.product = 'Mortgage'\nGROUP BY substr(l.issued_date, 1, 4) || '-Q' || ((CAST(substr(l.issued_date, 6, 2) AS INTEGER) + 2) / 3)\nORDER BY substr(l.issued_date, 1, 4) || '-Q' || ((CAST(substr(l.issued_date, 6, 2) AS INTEGER) + 2) / 3)"
+  },
+  {
+   "question": "Digital share of transfers by age band this year",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT c.age_band AS \"age band\",\n       100.0 * SUM(t.channel IN ('App', 'Web')) / COUNT(*) AS digital_share\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nWHERE t.type = 'Transfer out'\n  AND t.ts >= '2026-01-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY c.age_band\nORDER BY digital_share DESC"
+  },
+  {
+   "question": "What share of transfers are done in the app by region?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT b.region AS \"region\",\n       100.0 * SUM(t.channel IN ('App', 'Web')) / COUNT(*) AS digital_share\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'Transfer out'\n  AND t.ts >= '2026-10-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY b.region\nORDER BY digital_share DESC"
+  },
+  {
+   "question": "Top 3 merchant categories by card spend in August",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT t.merchant_category AS \"merchant category\",\n       SUM(t.amount) AS card_spend\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-08-01 00:00:00' AND t.ts < '2026-09-01 00:00:00'\nGROUP BY t.merchant_category\nORDER BY card_spend DESC\nLIMIT 3"
+  },
+  {
+   "question": "Fee income year on year",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT 'current' AS period,\n       SUM(t.amount) AS fee_income\nFROM transactions t\nWHERE t.type = 'Fee'\n  AND t.ts >= '2026-10-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nUNION ALL\nSELECT 'previous' AS period,\n       SUM(t.amount) AS fee_income\nFROM transactions t\nWHERE t.type = 'Fee'\n  AND t.ts >= '2025-10-01 00:00:00' AND t.ts < '2025-10-21 14:40:00'"
+  },
+  {
+   "question": "How many customers do we have?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT COUNT(DISTINCT a.customer_id) AS customer_count\nFROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id\nWHERE a.product = 'Current account'\n  AND s.snapshot_date = '2026-10-21'"
+  },
+  {
+   "question": "Active app users last week",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT COUNT(DISTINCT t.customer_id) AS app_users\nFROM transactions t\nWHERE t.channel = 'App'\n  AND t.ts >= '2026-10-12 00:00:00' AND t.ts < '2026-10-19 00:00:00'"
+  },
+  {
+   "question": "New lending in Q2 2026 by loan type",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT l.product AS \"loan type\",\n       SUM(l.principal) AS loans_issued\nFROM loans l\nWHERE l.issued_date >= '2026-04-01' AND l.issued_date < '2026-07-01'\nGROUP BY l.product\nORDER BY loans_issued DESC"
+  },
+  {
+   "question": "How much cash was withdrawn at ATMs in Faro yesterday?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT SUM(t.amount) AS atm_cash\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'ATM withdrawal'\n  AND t.ts >= '2026-10-20 00:00:00' AND t.ts < '2026-10-21 00:00:00'\n  AND b.city = 'Faro'"
+  },
+  {
+   "question": "Salaries received since March",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT SUM(t.amount) AS salaries_in\nFROM transactions t\nWHERE t.type IN ('Salary', 'Pension')\n  AND t.ts >= '2026-03-01 00:00:00' AND t.ts < '2026-10-21 14:40:00'"
+  },
+  {
+   "question": "Customers lost by month this year",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT substr(c.closed_date, 1, 7) AS \"month\",\n       COUNT(*) AS customers_lost\nFROM customers c\nWHERE c.closed_date >= '2026-01-01' AND c.closed_date < '2026-10-22'\nGROUP BY substr(c.closed_date, 1, 7)\nORDER BY substr(c.closed_date, 1, 7)"
+  },
+  {
+   "question": "Active customers in the last 30 days",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT COUNT(DISTINCT t.customer_id) AS active_customers\nFROM transactions t\nWHERE t.channel <> 'Automatic'\n  AND t.ts >= '2026-09-21 14:40:00' AND t.ts < '2026-10-21 14:40:00'"
+  },
+  {
+   "question": "Average balance of savings accounts",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT AVG(s.balance) AS avg_balance\nFROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id\nWHERE s.snapshot_date = '2026-10-21'\n  AND a.product = 'Savings account'"
+  },
+  {
+   "question": "Total deposits in the Algarve vs last year",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT 'current' AS period,\n       SUM(s.balance) AS total_deposits\nFROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id\nJOIN customers c ON c.customer_id = a.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE s.snapshot_date = '2026-10-21'\n  AND b.region = 'Algarve'\nUNION ALL\nSELECT 'previous' AS period,\n       SUM(s.balance) AS total_deposits\nFROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id\nJOIN customers c ON c.customer_id = a.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE s.snapshot_date = '2025-09-30'\n  AND b.region = 'Algarve'"
+  },
+  {
+   "question": "Loans issued this year vs last year",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT 'current' AS period,\n       SUM(l.principal) AS loans_issued\nFROM loans l\nWHERE l.issued_date >= '2026-01-01' AND l.issued_date < '2026-10-22'\nUNION ALL\nSELECT 'previous' AS period,\n       SUM(l.principal) AS loans_issued\nFROM loans l\nWHERE l.issued_date >= '2025-01-01' AND l.issued_date < '2025-10-22'"
+  },
+  {
+   "question": "Card spend by category and segment last month",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT t.merchant_category AS \"merchant category\",\n       c.segment AS \"segment\",\n       SUM(t.amount) AS card_spend\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-09-01 00:00:00' AND t.ts < '2026-10-01 00:00:00'\nGROUP BY t.merchant_category, c.segment\nORDER BY card_spend DESC"
+  },
+  {
+   "question": "Weekly card payments",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT date(t.ts, 'weekday 0', '-6 days') AS \"week starting\",\n       COUNT(*) AS card_payments\nFROM transactions t\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-08-03 00:00:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY date(t.ts, 'weekday 0', '-6 days')\nORDER BY date(t.ts, 'weekday 0', '-6 days')"
+  },
+  {
+   "question": "Daily transfers out in the last 30 days",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT substr(t.ts, 1, 10) AS \"day\",\n       SUM(t.amount) AS transfers_out\nFROM transactions t\nWHERE t.type = 'Transfer out'\n  AND t.ts >= '2026-09-21 14:40:00' AND t.ts < '2026-10-21 14:40:00'\nGROUP BY substr(t.ts, 1, 10)\nORDER BY substr(t.ts, 1, 10)"
+  },
+  {
+   "question": "Interest rates on new loans this year by loan type",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT l.product AS \"loan type\",\n       AVG(l.interest_rate) AS avg_rate_new\nFROM loans l\nWHERE l.issued_date >= '2026-01-01' AND l.issued_date < '2026-10-22'\nGROUP BY l.product\nORDER BY avg_rate_new DESC"
+  },
+  {
+   "question": "Card spend in Porto this week vs last week",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT 'current' AS period,\n       SUM(t.amount) AS card_spend\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-10-19 00:00:00' AND t.ts < '2026-10-21 14:40:00'\n  AND b.city = 'Porto'\nUNION ALL\nSELECT 'previous' AS period,\n       SUM(t.amount) AS card_spend\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-10-12 00:00:00' AND t.ts < '2026-10-14 14:40:00'\n  AND b.city = 'Porto'"
+  },
+  {
+   "question": "What was the loan book at the end of 2025?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT SUM(s.outstanding) AS loan_book\nFROM loan_snapshots s JOIN loans l ON l.loan_id = s.loan_id\nWHERE s.snapshot_date = '2025-12-31'"
+  },
+  {
+   "question": "Fee income by segment in 2025",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT c.segment AS \"segment\",\n       SUM(t.amount) AS fee_income\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nWHERE t.type = 'Fee'\n  AND t.ts >= '2025-01-01 00:00:00' AND t.ts < '2026-01-01 00:00:00'\nGROUP BY c.segment\nORDER BY fee_income DESC"
+  },
+  {
+   "question": "New accounts by account type this year",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT a.product AS \"account type\",\n       COUNT(*) AS new_accounts\nFROM accounts a\nWHERE a.opened_date >= '2026-01-01' AND a.opened_date < '2026-10-22'\nGROUP BY a.product\nORDER BY new_accounts DESC"
+  },
+  {
+   "question": "Total deposits by month",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT s.snapshot_date AS \"date\",\n       SUM(s.balance) AS total_deposits\nFROM balance_snapshots s JOIN accounts a ON a.account_id = s.account_id\nWHERE s.snapshot_date >= '2024-11-01' AND s.snapshot_date < '2026-10-22'\nGROUP BY s.snapshot_date\nORDER BY s.snapshot_date"
+  },
+  {
+   "question": "Card spend of premium customers in Lisbon last month",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT SUM(t.amount) AS card_spend\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'Card payment'\n  AND t.ts >= '2026-09-01 00:00:00' AND t.ts < '2026-10-01 00:00:00'\n  AND c.segment = 'Premium'\n  AND b.city = 'Lisboa'"
+  },
+  {
+   "question": "How many mortgages did we issue in 2025?",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT COUNT(*) AS loans_issued_count\nFROM loans l\nWHERE l.issued_date >= '2025-01-01' AND l.issued_date < '2026-01-01'\n  AND l.product = 'Mortgage'"
+  },
+  {
+   "question": "ATM cash by region yesterday",
+   "kind": "in scope",
+   "correct": true,
+   "note": "",
+   "sql": "SELECT b.region AS \"region\",\n       SUM(t.amount) AS atm_cash\nFROM transactions t\nJOIN customers c ON c.customer_id = t.customer_id\nJOIN branches b ON b.branch_id = c.branch_id\nWHERE t.type = 'ATM withdrawal'\n  AND t.ts >= '2026-10-20 00:00:00' AND t.ts < '2026-10-21 00:00:00'\nGROUP BY b.region\nORDER BY atm_cash DESC"
+  },
+  {
+   "question": "Which customers are likely to leave next month?",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "Why did card spend fall in Coimbra?",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "Forecast deposits for next quarter",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "What's the weather in Porto?",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "Who is our best branch manager?",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "Show customers who have a mortgage but no savings account",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "What is the correlation between age and card spend?",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  },
+  {
+   "question": "Tell me a joke",
+   "kind": "out of scope",
+   "correct": true,
+   "note": "",
+   "sql": ""
+  }
+ ]
+}

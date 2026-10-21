@@ -16,7 +16,6 @@ import datetime as dt
 import json
 import math
 import os
-import time
 
 import pandas as pd
 import yaml
@@ -83,7 +82,6 @@ def main():
     for item in spec["in_scope"]:
         gold, _ = guard.run(conn, item["gold"])
         gold_n = numbers(gold)
-        t = time.time()
         sql, ok, note = "", False, ""
         try:
             if llm:
@@ -100,8 +98,7 @@ def main():
                     ok = same(found, gold_n)
         except Exception as e:  # noqa: BLE001 - recorded as a failure
             note = f"error: {e}"
-        rows.append({"question": item["q"], "kind": "in scope", "correct": bool(ok), "note": note,
-                     "seconds": round(time.time() - t, 2), "sql": sql})
+        rows.append({"question": item["q"], "kind": "in scope", "correct": bool(ok), "note": note, "sql": sql})
         print(("PASS " if ok else "FAIL ") + item["q"] + (f"  ({note})" if note else ""))
 
     for question in spec["out_of_scope"]:
@@ -111,8 +108,7 @@ def main():
         else:
             q, early = engine.parse(question, now)
             declined = early is not None
-        rows.append({"question": question, "kind": "out of scope", "correct": bool(declined), "note": "",
-                     "seconds": 0, "sql": ""})
+        rows.append({"question": question, "kind": "out of scope", "correct": bool(declined), "note": "", "sql": ""})
         print(("PASS " if declined else "FAIL ") + question + "  (should decline)")
 
     df = pd.DataFrame(rows)
