@@ -13,8 +13,9 @@ import os
 import altair as alt
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
-from bank_assistant import ai, alerts, examples, guard
+from bank_assistant import ai, alerts, costs, examples, guard, usage
 from bank_assistant.db import TABLES, Bank
 from bank_assistant.engine import Answer, Catalog, Engine, fmt
 from bank_assistant.simulate import lisbon_now
@@ -61,6 +62,23 @@ ss = st.session_state
 ss.setdefault("messages", [])
 ss.setdefault("last_query", None)
 ss.setdefault("ai_history", [])
+today = now.date()
+
+# usage ledger: read once from this browser's cookie, written back whenever it changes (end of page)
+if "ledger" not in ss:
+    try:
+        raw = st.context.cookies.get(usage.COOKIE)
+    except Exception:
+        raw = None
+    ss.ledger = usage.decode(raw, today) if raw else usage.empty(today)
+    ss.ledger_saved = raw
+ss.setdefault("session_calls", [])       # every AI call in this session, for the log and CSV
+ss.setdefault("session_free", 0)
+ss.setdefault("cache_clock", {})         # demo mode: when the instructions were last "cached"
+ss.setdefault("demo_prev", None)
+ss.setdefault("fx", costs.USD_TO_EUR)
+ss.setdefault("prices", dict(costs.PRICES))
+ss.setdefault("caching", True)
 
 
 # ---------------------------------------------------------------- sidebar
@@ -71,19 +89,44 @@ with st.sidebar:
                     help="Built-in: understands questions about the bank's KPIs and writes the SQL itself, "
                          "without any AI model. AI model: any question, using your own key.")
     llm = None
+    price_as = None
     if mode.startswith("AI"):
-        provider = st.selectbox("Provider", list(ai.PROVIDERS))
-        key = st.text_input("API key", type="password", placeholder="Used only for this session, never stored",
-                            help="The key stays in this browser session and goes only to the provider you chose.")
-        model = st.text_input("Model", value=ai.PROVIDERS[provider]["default_model"])
-        base_url = None
-        if provider.startswith("OpenAI-compatible"):
-            base_url = st.text_input("Base URL", value=ai.PROVIDERS[provider]["base_url"])
-        if key or provider.startswith("OpenAI-compatible"):
-            llm = ai.LLM(provider, key, model, base_url)
-            st.success("AI mode on. Saved examples still run without the model.")
+        provider = st.selectbox("Provider", list(ai.PROVIDERS),
+                                help="Demo: no key and no real model. The built-in engine answers, and the app counts "
+                                     "the tokens a real model would use, so you can try the cost tracker.")
+        if provider == ai.DEMO:
+            price_as = st.selectbox("Price it as", list(ss.prices), index=0)
+            llm = ai.DemoLLM(engine, conn, now, price_as, ss.caching, ss.cache_clock, ss.demo_prev)
+            st.success("Demo AI on: answers come from the built-in engine; token counts are estimated.")
         else:
-            st.info("Paste a key to switch AI mode on. Until then, the built-in engine answers.")
+            key = st.text_input("API key", type="password", placeholder="Used only for this session, never stored",
+                                help="The key stays in this browser session and goes only to the provider you chose.")
+            model = st.text_input("Model", value=ai.PROVIDERS[provider]["default_model"])
+            price_as = model
+            base_url = None
+            if provider.startswith("OpenAI-compatible"):
+                base_url = st.text_input("Base URL", value=ai.PROVIDERS[provider]["base_url"])
+            if key or provider.startswith("OpenAI-compatible"):
+                llm = ai.LLM(provider, key, model, base_url, caching=ss.caching)
+                st.success("AI mode on. Saved examples still run without the model.")
+            else:
+                st.info("Paste a key to switch AI mode on. Until then, the built-in engine answers.")
+        free_model = provider.startswith("OpenAI-compatible") and llm is not None and costs.is_local(llm.base_url)
+        if llm is not None and not free_model:
+            preview = costs.total(ai.typical_question(price_as, ss.caching), ss.prices, ss.fx)["eur"]
+            st.caption(f"About **{costs.eur(preview)}** per question with {price_as}"
+                       + ("" if preview is not None else " (add its price in 💶 Usage)") + ".")
+
+    budget = usage.status(ss.ledger, today)
+    st.markdown("### 💶 AI spend")
+    st.progress(min(budget["share"], 1.0),
+                text=f"{costs.eur(budget['spent'])} of {costs.eur(budget['budget'])} this month")
+    if budget["level"] == "over" and llm is not None:
+        llm = None
+        st.error("Monthly AI budget reached, so AI mode is paused and the built-in engine answers. "
+                 "Raise the budget or reset the counter in 💶 Usage.")
+    elif budget["level"] == "warn":
+        st.warning(f"{budget['share']:.0%} of this month's AI budget is used.")
     st.markdown("### 🕒 Live data")
     st.caption(f"Data up to **{now:%H:%M:%S}** Lisbon time, {now:%A %-d %B %Y}. "
                "New payments keep arriving; refresh to pull them in.")
@@ -149,21 +192,46 @@ def show(ans):
             for line in ans.understood or []:
                 st.markdown(f"- {line}")
     badge = {"built-in": "Built-in engine", "saved": "Saved example", "ai": "AI model"}[ans.source]
-    st.caption(f"Answered by: {badge}")
+    calls = getattr(ans, "usage", None)
+    if calls:
+        t = costs.total(calls, ss.prices, ss.fx)
+        cached = t["cache_read"]
+        tokens_in = t["input"] + t["cache_read"] + t["cache_write"]
+        st.caption(f"Answered by: {badge} · 🔢 {t['calls']} model call{'s' if t['calls'] != 1 else ''}, "
+                   f"{tokens_in:,} tokens in" + (f" ({cached:,} from cache)" if cached else "")
+                   + (f" ({t['cache_write']:,} written to cache)" if t["cache_write"] else "")
+                   + f", {t['output']:,} out · ≈ {costs.eur(t['eur'])}" + (" (estimated)" if t["estimated"] else ""))
+    else:
+        st.caption(f"Answered by: {badge} · no AI used, €0")
 
 
 def answer(question):
-    """Route a question: saved example, AI model, or the built-in engine."""
+    """Route a question: saved example (free), AI model, or the built-in engine (free)."""
     if question in examples.BY_QUESTION:
+        usage.record_free(ss.ledger)
+        ss.session_free += 1
         return examples.run(examples.BY_QUESTION[question], conn, now)
     if llm is not None:
+        start = len(llm.calls)
         try:
             a = ai.ask(llm, question, conn, now, ss.ai_history)
         except ai.LLMError as e:
-            return Answer(f"⚠️ {e}", ok=False, source="ai")
+            a = ai.with_usage(Answer(f"⚠️ {e}", ok=False, source="ai"), llm.calls[start:])
         if a.ok and a.sql:
             ss.ai_history.append((question, a.sql))
+        if isinstance(llm, ai.DemoLLM):
+            ss.demo_prev = llm.previous
+        if a.usage:
+            summary = costs.total(a.usage, ss.prices, ss.fx)
+            usage.record(ss.ledger, summary, a.usage[0].price_as or a.usage[0].model, question, today)
+            for u in a.usage:
+                ss.session_calls.append({"time": f"{now:%H:%M:%S}", "question": question, "model": u.model,
+                                         "tokens in": u.input, "from cache": u.cache_read,
+                                         "written to cache": u.cache_write, "tokens out": u.output,
+                                         "eur": costs.cost_eur(u, ss.prices, ss.fx), "estimated": u.estimated})
         return a
+    usage.record_free(ss.ledger)
+    ss.session_free += 1
     a, q = engine.answer(question, conn, now, ss.last_query)
     if q is not None:
         ss.last_query = q
@@ -207,8 +275,8 @@ st.caption("Ask about a bank's numbers in plain English. The assistant turns you
            "live data, and answers with the number, a chart and its working. Data is simulated.")
 headline()
 
-tab_ask, tab_alerts, tab_dash, tab_acc, tab_data, tab_how = st.tabs(
-    ["💬 Ask", "🔔 Alerts", "📊 Dashboard", "🧪 Accuracy", "🗂️ Data & KPIs", "ℹ️ How it works"])
+tab_ask, tab_usage, tab_alerts, tab_dash, tab_acc, tab_data, tab_how = st.tabs(
+    ["💬 Ask", "💶 Usage", "🔔 Alerts", "📊 Dashboard", "🧪 Accuracy", "🗂️ Data & KPIs", "ℹ️ How it works"])
 
 with tab_ask:
     pending = None
@@ -242,6 +310,98 @@ with tab_ask:
                     a = answer(question)
                 show(a)
             ss.messages.append({"role": "assistant", "answer": a})
+
+with tab_usage:
+    st.markdown("#### What the AI answers cost")
+    st.caption("Token counts come from the provider's reply (Demo mode estimates them from the text). Euros are an "
+               "estimate: list price per million tokens × tokens × the USD→EUR rate below. Your provider's bill is the "
+               "real number. The counter is kept in this browser only (a small cookie); your API key is never stored.")
+    led = ss.ledger
+    s_eur = sum(r["eur"] or 0 for r in ss.session_calls)
+    s_tok = sum(r["tokens in"] + r["from cache"] + r["written to cache"] + r["tokens out"] for r in ss.session_calls)
+    s_q = len({(r["time"], r["question"]) for r in ss.session_calls})
+    day, month, total_row = usage.day_row(led, today), usage.month_row(led, today), led["all"]
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("This session", costs.eur(s_eur), f"{s_q} AI question{'s' if s_q != 1 else ''} · {s_tok:,} tokens",
+              delta_color="off")
+    c2.metric("Today", costs.eur(day[5]), f"{day[0]} calls · {sum(day[1:5]):,} tokens", delta_color="off")
+    c3.metric("This month", costs.eur(month[5]), f"{month[0]} calls · {sum(month[1:5]):,} tokens", delta_color="off")
+    c4.metric(f"Since {dt.date.fromisoformat(led['since']):%-d %b}", costs.eur(total_row[5]),
+              f"{led.get('asked', 0)} AI question{'s' if led.get('asked', 0) != 1 else ''}", delta_color="off")
+
+    b = usage.status(led, today)
+    st.progress(min(b["share"], 1.0), text=f"Monthly budget: {costs.eur(b['spent'])} of {costs.eur(b['budget'])} "
+                                           f"({b['share']:.0%})")
+    if b["level"] == "over":
+        st.error("Budget reached: AI mode is paused until next month, a higher budget or a reset.")
+    elif b["level"] == "warn":
+        st.warning("Over 80% of the monthly budget is used.")
+
+    avg = usage.avg_cost_per_question(led)
+    if avg is None and price_as:
+        avg = costs.total(ai.typical_question(price_as, ss.caching), ss.prices, ss.fx)["eur"]
+    if led["free"]:
+        saved = f" ≈ **{costs.eur(led['free'] * avg)}** not spent" if avg else ""
+        st.markdown(f"🟢 **{led['free']}** questions were answered without AI (built-in engine or saved examples){saved}.")
+
+    left, right = st.columns(2)
+    with left:
+        st.markdown("**Spend per day this month**")
+        days = pd.DataFrame([{"day": f"{led['month']}-{d}", "eur": r[5], "calls": r[0]} for d, r in sorted(led["days"].items())])
+        if days.empty:
+            st.caption("No AI calls this month yet. Switch on AI mode (the Demo needs no key) and ask something.")
+        else:
+            st.altair_chart(alt.Chart(days).mark_bar(cornerRadiusEnd=3).encode(
+                x=alt.X("day:O", title=None), y=alt.Y("eur:Q", title="€"), tooltip=["day", "calls", "eur"]),
+                width="stretch")
+        if led.get("prev"):
+            st.caption(f"Last month ({led['prev']['month']}): {costs.eur(led['prev']['eur'])}")
+    with right:
+        st.markdown("**By model (since the last reset)**")
+        models = pd.DataFrame([{"model": m, "calls": r[0], "tokens in": r[1] + r[3] + r[4], "from cache": r[3],
+                                "tokens out": r[2], "€": round(r[5], 5)} for m, r in led["models"].items()])
+        if models.empty:
+            st.caption("Nothing yet.")
+        else:
+            st.dataframe(models, hide_index=True, width="stretch")
+        if led["top"]:
+            st.markdown("**Most expensive questions**")
+            st.dataframe(pd.DataFrame(led["top"], columns=["€", "question"]), hide_index=True, width="stretch")
+
+    st.markdown("**This session, call by call**")
+    if ss.session_calls:
+        log = pd.DataFrame(ss.session_calls)
+        st.dataframe(log, hide_index=True, width="stretch")
+        st.download_button("Download as CSV", log.to_csv(index=False), "ai_usage.csv", "text/csv")
+    else:
+        st.caption("No AI calls in this session yet.")
+
+    with st.expander("⚙️ Budget, prices and reset"):
+        new_budget = st.number_input("Monthly budget (€)", min_value=0.0, value=float(led["budget"]), step=0.5,
+                                     help="At 80% you get a warning; at 100% AI mode pauses and the built-in "
+                                          "engine answers. 0 means no limit.")
+        if new_budget != led["budget"]:
+            led["budget"] = new_budget
+            st.rerun()
+        ss.fx = st.number_input("1 US dollar in euros", min_value=0.1, max_value=5.0, value=float(ss.fx), step=0.01,
+                                help=f"Default: the rate on 21 Oct 2026.")
+        ss.caching = st.toggle("Prompt caching", value=ss.caching,
+                               help="The long instructions (tables and KPI definitions) are sent with every question. "
+                                    "With caching, repeat calls within 5 minutes read them at about 10% of the price.")
+        st.caption(f"Prices in US dollars per million tokens, from the providers' price pages on {costs.PRICES_CHECKED}. "
+                   "Edit them or add a model; local models (Ollama) cost nothing.")
+        table = pd.DataFrame([{"model": m, "input": p[0], "cache write": p[1], "cache read": p[2], "output": p[3]}
+                              for m, p in ss.prices.items()])
+        edited = st.data_editor(table, hide_index=True, num_rows="dynamic", width="stretch", key="price_table")
+        num = lambda v: float(v) if pd.notna(v) else 0.0
+        ss.prices = {str(r["model"]).strip(): (num(r["input"]), num(r["cache write"]), num(r["cache read"]),
+                                               num(r["output"]))
+                     for r in edited.to_dict("records") if pd.notna(r.get("model")) and str(r["model"]).strip()}
+        sure = st.checkbox("Yes, clear all saved usage in this browser")
+        if st.button("Reset the counter", disabled=not sure):
+            ss.ledger = usage.empty(today, budget=led["budget"])
+            ss.session_calls, ss.session_free = [], 0
+            st.rerun()
 
 with tab_alerts:
     st.markdown("#### What's unusual today and yesterday")
@@ -345,6 +505,12 @@ with tab_how:
 4. **Answer** in one or two sentences with the number, and show the chart, the SQL, the data and how the
    question was read, so anyone can check it.
 
+#### What AI answers cost
+
+Each AI answer shows the tokens it used (from the provider's reply) and an estimated price in euros. The
+**💶 Usage** tab keeps totals in this browser, with a monthly budget that pauses AI mode when it is reached.
+Prompt caching sends the long, unchanging instructions at about a tenth of the price on repeat calls.
+
 #### Why a built-in engine and an AI model?
 
 The built-in engine is free, instant and predictable, and says when it can't answer. The AI model handles
@@ -358,3 +524,13 @@ monthly snapshots. Patterns are built in to find: Christmas and summer peaks, th
 and from branches to the app, 14 salaries a year, customers whose salary stops before they leave, and late
 payments rising on personal loans in the Algarve.
 """)
+
+
+# ---------------------------------------------------------------- save the usage ledger in this browser
+
+_saved = usage.encode(ss.ledger)
+if _saved != ss.get("ledger_saved"):
+    components.html(
+        "<script>document.cookie = '" + usage.COOKIE + "=" + _saved + "; path=/; max-age=31536000; SameSite=Lax'"
+        " + (location.protocol === 'https:' ? '; Secure' : '');</script>", height=0)
+    ss.ledger_saved = _saved

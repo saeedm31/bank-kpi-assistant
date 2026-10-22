@@ -40,8 +40,31 @@ question get different numbers, and nobody can see how the answer was made.
 | **Live data** | New payments arrive every minute; "today", "last 24 hours" and "this week so far" are real. |
 | **Alerts before you ask** | Each branch is compared with the same weekday and hours of the last four weeks. Big, unlikely changes are flagged, with a "show me" chart. |
 | **Two engines** | A **built-in engine** (free, instant, no AI model) for KPI questions, and an **AI mode** with your own key (Claude, OpenAI or any OpenAI-compatible server such as Ollama) for anything else. Six **saved examples** show harder questions with hand-written SQL. |
+| **Shows what AI costs** | Every AI answer shows its tokens and an estimated price in euros. A **💶 Usage** tab keeps totals per session, day and month, with a monthly budget that pauses AI mode when it is reached. |
 
 ![From question to answer](docs/flow.svg)
+
+## 💶 What AI answers cost
+
+AI mode is paid per token, so the app keeps the bill visible:
+
+- **Under each answer:** "🔢 2 model calls, 2,494 tokens in (2,339 from cache), 113 out · ≈ €0.0001". Token counts come
+  from the provider's reply, so they are exact. Retries after a failed query are counted too.
+- **💶 Usage tab:** spend this session, today, this month and since the last reset; spend per day; spend by model;
+  the most expensive questions; a call-by-call log with CSV download; and how much was *not* spent because the
+  built-in engine or a saved example answered.
+- **Monthly budget:** a warning at 80%; at 100% AI mode pauses and the free built-in engine answers.
+- **Settings:** budget, USD→EUR rate, prompt caching on/off, and an editable price table (US dollars per million
+  tokens, from the providers' price pages). Local models through Ollama cost €0. **Reset the counter** clears everything.
+- **Stored in your browser only** (a small cookie). Your API key is never stored.
+- **No key? Choose "Demo (simulated AI)".** The built-in engine answers, and the app counts the tokens a real model
+  would use, marked *estimated*, so you can try the tracker for free.
+
+![Cost of 1,000 questions by model](docs/cost.svg)
+
+Most of the cost is the fixed instructions (the tables and KPI definitions, about 2,300 tokens), not the question.
+**Prompt caching** sends them at about a tenth of the price on repeat calls, so the cost per question falls by roughly
+two thirds. The euro figures are estimates; your provider's bill is the real number.
 
 ## Results
 
@@ -92,11 +115,12 @@ question ─► understand ─► SQL from the KPI definition ─► guard ─�
 | [`bank_assistant/kpis.yml`](bank_assistant/kpis.yml) | The KPI definitions, dimensions and synonyms |
 | [`bank_assistant/engine.py`](bank_assistant/engine.py), [`timeparse.py`](bank_assistant/timeparse.py) | Built-in engine: question → SQL → plain-English answer |
 | [`bank_assistant/guard.py`](bank_assistant/guard.py) | Runs SQL safely |
-| [`bank_assistant/ai.py`](bank_assistant/ai.py) | AI mode (Anthropic, OpenAI, OpenAI-compatible) |
+| [`bank_assistant/ai.py`](bank_assistant/ai.py) | AI mode (Anthropic, OpenAI, OpenAI-compatible, and the no-key Demo), with token counting and prompt caching |
+| [`bank_assistant/costs.py`](bank_assistant/costs.py), [`usage.py`](bank_assistant/usage.py) | Prices and euro estimates; the usage ledger kept in the browser, with the monthly budget |
 | [`bank_assistant/alerts.py`](bank_assistant/alerts.py) | Unusual-activity alerts |
 | [`bank_assistant/examples.py`](bank_assistant/examples.py) | Saved examples: salary stopped (early churn signal), cross-sell, app users vs spend, top depositors, cohort, fee waiver |
 | [`evaluate.py`](evaluate.py) | Scores the built-in engine or a model on the test questions |
-| [`app.py`](app.py) | Streamlit app: chat, alerts, dashboard, accuracy, data and KPIs |
+| [`app.py`](app.py) | Streamlit app: chat, AI usage and costs, alerts, dashboard, accuracy, data and KPIs |
 
 ## Run it
 
