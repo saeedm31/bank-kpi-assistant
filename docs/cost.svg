@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 366" width="900" height="366" role="img" aria-label="Estimated cost of 1,000 questions by model, with and without prompt caching">
+<style>
+  .bg { fill: #fcfcfb; } .grid { stroke: #e4e3df; stroke-width: 1; }
+  .axis { fill: #52514e; font: 12px system-ui, -apple-system, sans-serif; }
+  .small { fill: #52514e; font: 11.5px system-ui, -apple-system, sans-serif; }
+  .title { fill: #0b0b0b; font: 600 15px system-ui, -apple-system, sans-serif; }
+  .sub { fill: #0b0b0b; font: 600 13px system-ui, -apple-system, sans-serif; }
+  .box { fill: #f3f2ee; stroke: #d6d4cd; stroke-width: 1; } .arrow { stroke: #8a8984; stroke-width: 1.5; fill: none; }
+  .s0 { stroke: #2a78d6; } .s1 { stroke: #eb6834; } .f0 { fill: #2a78d6; } .f1 { fill: #eb6834; }
+  .f2 { fill: #c9c7bf; } .band { fill: #2a78d6; opacity: .12; } .shade { fill: #eb6834; opacity: .08; }
+  .line { fill: none; stroke-width: 2.5; } .dash { stroke-dasharray: 5 4; }
+  .white { fill: #ffffff; font: 600 12px system-ui, -apple-system, sans-serif; }
+  @media (prefers-color-scheme: dark) {
+    .bg { fill: #1a1a19; } .grid { stroke: #34332f; } .axis, .small { fill: #c3c2b7; } .title, .sub { fill: #f0efec; }
+    .box { fill: #252523; stroke: #3d3c38; } .arrow { stroke: #8a8984; }
+    .s0 { stroke: #3987e5; } .s1 { stroke: #d95926; } .f0 { fill: #3987e5; } .f1 { fill: #d95926; } .f2 { fill: #55544f; }
+    .band { fill: #3987e5; }
+  }
+</style>
+<rect class="bg" width="900" height="366" rx="8"/>
+<text class="title" x="24" y="28">What 1,000 AI-answered questions cost, by model</text>
+<text class="axis" x="24" y="50">Estimated from a typical question: 2 model calls, about 2,500 tokens in and 135 out. Prices of 22 Oct 2026, 1 USD = 0.89 EUR.</text>
+<rect class="f1" x="170" y="62" width="14" height="10" rx="2"/><text class="axis" x="190" y="71">Without prompt caching</text>
+<rect class="f0" x="370" y="62" width="14" height="10" rx="2"/><text class="axis" x="390" y="71">With prompt caching</text>
+<line class="grid" x1="233" x2="233" y1="86" y2="322"/>
+<line class="grid" x1="443" x2="443" y1="86" y2="322"/>
+<line class="grid" x1="653" x2="653" y1="86" y2="322"/>
+<text class="axis" x="160" y="110" text-anchor="end">Claude Haiku 5.5</text>
+<rect class="f1" x="170" y="92" width="160" height="12" rx="2"/><text class="axis" x="336" y="102">€0.29</text>
+<rect class="f0" x="170" y="106" width="64" height="12" rx="2"/><text class="axis" x="240" y="116">€0.10</text>
+<text class="axis" x="160" y="156" text-anchor="end">GPT-6 Luna</text>
+<rect class="f1" x="170" y="138" width="160" height="12" rx="2"/><text class="axis" x="336" y="148">€0.29</text>
+<rect class="f0" x="170" y="152" width="64" height="12" rx="2"/><text class="axis" x="240" y="162">€0.10</text>
+<text class="axis" x="160" y="202" text-anchor="end">Claude Sonnet 5.5</text>
+<rect class="f1" x="170" y="184" width="433" height="12" rx="2"/><text class="axis" x="609" y="194">€5.77</text>
+<rect class="f0" x="170" y="198" width="327" height="12" rx="2"/><text class="axis" x="503" y="208">€1.81</text>
+<text class="axis" x="160" y="248" text-anchor="end">Claude Opus 5.5</text>
+<rect class="f1" x="170" y="230" width="496" height="12" rx="2"/><text class="axis" x="672" y="240">€11.53</text>
+<rect class="f0" x="170" y="244" width="391" height="12" rx="2"/><text class="axis" x="567" y="254">€3.62</text>
+<text class="axis" x="160" y="294" text-anchor="end">GPT-6 Astra</text>
+<rect class="f1" x="170" y="276" width="580" height="12" rx="2"/><text class="axis" x="756" y="286">€28.83</text>
+<rect class="f0" x="170" y="290" width="484" height="12" rx="2"/><text class="axis" x="660" y="300">€10.10</text>
+<text class="axis" x="233" y="334" text-anchor="middle">€0.1</text>
+<text class="axis" x="443" y="334" text-anchor="middle">€1</text>
+<text class="axis" x="653" y="334" text-anchor="middle">€10</text>
+<text class="axis" x="485" y="352" text-anchor="middle">Euros per 1,000 questions (log scale)</text>
+</svg>

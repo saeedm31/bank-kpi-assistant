@@ -33,6 +33,18 @@ class AppTests(unittest.TestCase):
         self.assertFalse(at.exception, [e.value for e in at.exception])
         self.assertIn("card spend for Premium", " ".join(m.value for m in at.markdown))
 
+    def test_demo_ai_mode_shows_cost(self):
+        at = AppTest.from_file(APP, default_timeout=300).run()
+        engine = next(r for r in at.radio if r.label == "Answer engine")
+        engine.set_value("AI model (your API key)").run()
+        self.assertEqual(at.selectbox[0].value, "Demo (simulated AI, no key)")
+        at.chat_input[0].set_value("NPL ratio by region").run()
+        self.assertFalse(at.exception, [e.value for e in at.exception])
+        captions = " ".join(c.value for c in at.caption)
+        self.assertIn("model calls", captions)
+        self.assertIn("(estimated)", captions)
+        self.assertIn("1 AI question", " ".join(str(m.delta) for m in at.metric))
+
     def test_saved_example_button(self):
         at = self.at
         button = next(b for b in at.button if b.label.startswith("What share of mortgage customers"))
