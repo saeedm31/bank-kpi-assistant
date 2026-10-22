@@ -2,7 +2,7 @@
 
 Usage:
     python evaluate.py && python plot_readme.py
-Writes docs/flow.svg, docs/alert.svg and docs/accuracy.svg. The alert chart uses the evaluation
+Writes docs/flow.svg, docs/alert.svg, docs/accuracy.svg and docs/cost.svg. The alert chart uses the evaluation
 clock (21 Oct 2026, 14:40), when the simulator plants a card terminal outage in Coimbra.
 """
 
@@ -150,6 +150,43 @@ def accuracy_chart(main, unseen):
     return svg(y + 24, "Accuracy of the built-in engine", body)
 
 
+def cost_chart():
+    """Estimated euros per 1,000 questions by model, with and without prompt caching (log scale)."""
+    import math
+    from bank_assistant import ai, costs
+    models = [("Claude Haiku 5.5", "claude-haiku-5-5"), ("GPT-6 Luna", "gpt-6-luna"),
+              ("Claude Sonnet 5.5", "claude-sonnet-5-5"), ("Claude Opus 5.5", "claude-opus-5-5"),
+              ("GPT-6 Astra", "gpt-6-astra")]
+    rows = [(name, 1000 * costs.total(ai.typical_question(m, False))["eur"],
+             1000 * costs.total(ai.typical_question(m, True))["eur"]) for name, m in models]
+    x0, x1, top, bh, gap = 170, 800, 92, 14, 18
+    lo, hi = math.log10(0.05), math.log10(50)
+    px = lambda v: x0 + (math.log10(v) - lo) * (x1 - x0) / (hi - lo)
+    body = ['<text class="title" x="24" y="28">What 1,000 AI-answered questions cost, by model</text>',
+            '<text class="axis" x="24" y="50">Estimated from a typical question: 2 model calls, about 2,500 tokens in and '
+            '135 out. Prices of 22 Oct 2026, 1 USD = 0.89 EUR.</text>',
+            f'<rect class="f1" x="{x0}" y="62" width="14" height="10" rx="2"/><text class="axis" x="{x0 + 20}" y="71">'
+            'Without prompt caching</text>',
+            f'<rect class="f0" x="{x0 + 200}" y="62" width="14" height="10" rx="2"/><text class="axis" x="{x0 + 220}" '
+            'y="71">With prompt caching</text>']
+    for v in (0.1, 1, 10):
+        body.append(f'<line class="grid" x1="{px(v):.0f}" x2="{px(v):.0f}" y1="{top - 6}" '
+                    f'y2="{top + len(rows) * (2 * bh + gap)}"/>')
+    for i, (name, plain, cached) in enumerate(rows):
+        y = top + i * (2 * bh + gap)
+        body.append(f'<text class="axis" x="{x0 - 10}" y="{y + bh + 4}" text-anchor="end">{name}</text>')
+        for j, (v, cls) in enumerate(((plain, "f1"), (cached, "f0"))):
+            yy = y + j * bh
+            body.append(f'<rect class="{cls}" x="{x0}" y="{yy}" width="{px(v) - x0:.0f}" height="{bh - 2}" rx="2"/>'
+                        f'<text class="axis" x="{px(v) + 6:.0f}" y="{yy + bh - 4}">€{v:.2f}</text>')
+    y = top + len(rows) * (2 * bh + gap)
+    for v in (0.1, 1, 10):
+        body.append(f'<text class="axis" x="{px(v):.0f}" y="{y + 12}" text-anchor="middle">€{v:g}</text>')
+    body.append(f'<text class="axis" x="{(x0 + x1) / 2:.0f}" y="{y + 30}" text-anchor="middle">'
+                f'Euros per 1,000 questions (log scale)</text>')
+    return svg(y + 44, "Estimated cost of 1,000 questions by model, with and without prompt caching", body)
+
+
 def main():
     now = dt.datetime(2026, 10, 21, 14, 40)
     bank = Bank(now)
@@ -160,7 +197,7 @@ def main():
         unseen = json.load(f)
     os.makedirs("docs", exist_ok=True)
     for name, text in (("docs/flow.svg", flow()), ("docs/alert.svg", alert_chart(conn, now)),
-                       ("docs/accuracy.svg", accuracy_chart(main_set, unseen))):
+                       ("docs/accuracy.svg", accuracy_chart(main_set, unseen)), ("docs/cost.svg", cost_chart())):
         with open(name, "w") as f:
             f.write(text)
         print("Wrote", name)

@@ -228,6 +228,25 @@ class AITests(unittest.TestCase):
         self.assertFalse(a.ok)
         self.assertEqual(a.text, "Which year?")
 
+    def test_demo_model_counts_tokens_and_uses_the_cache(self):
+        clock = {}
+        llm = ai.DemoLLM(ENGINE, CONN, NOW, "claude-haiku-5-5", caching=True, cache_clock=clock)
+        a = ai.ask(llm, "Card spend by branch last month", CONN, NOW)
+        self.assertTrue(a.ok)
+        self.assertEqual(len(a.usage), 2)
+        self.assertTrue(all(u.estimated for u in a.usage))
+        self.assertGreater(a.usage[0].cache_write, 1000)               # first call writes the instructions
+        follow = ai.DemoLLM(ENGINE, CONN, NOW, "claude-haiku-5-5", caching=True, cache_clock=clock,
+                            previous=llm.previous)
+        b = ai.ask(follow, "and for premium customers?", CONN, NOW)
+        self.assertGreater(b.usage[0].cache_read, 1000)                # the next one reads them cheaply
+        self.assertIn("Premium", b.text)
+        from bank_assistant import costs
+        self.assertLess(costs.total(b.usage)["eur"], costs.total(a.usage)["eur"])
+        declined = ai.ask(ai.DemoLLM(ENGINE, CONN, NOW), "Why did card spend fall?", CONN, NOW)
+        self.assertFalse(declined.ok)
+        self.assertEqual(len(declined.usage), 1)                       # the model was still called once
+
     def test_prompt_has_schema_and_kpis(self):
         self.assertIn("TABLE loan_snapshots", ai.schema_text())
         self.assertIn("NPL ratio", ai.kpi_text())
