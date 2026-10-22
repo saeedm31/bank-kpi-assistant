@@ -15,6 +15,11 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+try:
+    import streamlit.components.v2 as components_v2       # two-way components (Streamlit 1.51+)
+except ImportError:
+    components_v2 = None
+
 from bank_assistant import ai, alerts, costs, examples, guard, usage
 from bank_assistant.db import TABLES, Bank
 from bank_assistant.engine import Answer, Catalog, Engine, fmt
@@ -64,14 +69,11 @@ ss.setdefault("last_query", None)
 ss.setdefault("ai_history", [])
 today = now.date()
 
-# usage ledger: read once from this browser's cookie, written back whenever it changes (end of page)
+# usage ledger: kept in this browser's local storage; loaded once per visit, saved when it changes (end of page)
 if "ledger" not in ss:
-    try:
-        raw = st.context.cookies.get(usage.COOKIE)
-    except Exception:
-        raw = None
-    ss.ledger = usage.decode(raw, today) if raw else usage.empty(today)
-    ss.ledger_saved = raw
+    ss.ledger = usage.empty(today)
+    ss.ledger_loaded = False
+    ss.ledger_saved = None
 ss.setdefault("session_calls", [])       # every AI call in this session, for the log and CSV
 ss.setdefault("session_free", 0)
 ss.setdefault("cache_clock", {})         # demo mode: when the instructions were last "cached"
@@ -315,7 +317,7 @@ with tab_usage:
     st.markdown("#### What the AI answers cost")
     st.caption("Token counts come from the provider's reply (Demo mode estimates them from the text). Euros are an "
                "estimate: list price per million tokens × tokens × the USD→EUR rate below. Your provider's bill is the "
-               "real number. The counter is kept in this browser only (a small cookie); your API key is never stored.")
+               "real number. The counter is kept in this browser only (local storage); your API key is never stored.")
     led = ss.ledger
     s_eur = sum(r["eur"] or 0 for r in ss.session_calls)
     s_tok = sum(r["tokens in"] + r["from cache"] + r["written to cache"] + r["tokens out"] for r in ss.session_calls)
@@ -526,11 +528,34 @@ payments rising on personal loans in the Algarve.
 """)
 
 
-# ---------------------------------------------------------------- save the usage ledger in this browser
+# ---------------------------------------------------------------- keep the usage ledger in this browser
+# Streamlit Community Cloud drops custom cookies, so the ledger lives in localStorage. A tiny two-way
+# component reads it once per visit; a one-way snippet writes it back whenever it changes.
 
-_saved = usage.encode(ss.ledger)
-if _saved != ss.get("ledger_saved"):
-    components.html(
-        "<script>document.cookie = '" + usage.COOKIE + "=" + _saved + "; path=/; max-age=31536000; SameSite=Lax'"
-        " + (location.protocol === 'https:' ? '; Secure' : '');</script>", height=0)
-    ss.ledger_saved = _saved
+READ_LEDGER = """
+export default function(component) {
+    let saved = "";
+    try { saved = window.localStorage.getItem("%s") || ""; } catch (e) {}
+    component.setStateValue("stored", saved);
+}
+""" % usage.STORAGE_KEY
+
+if not ss.ledger_loaded:
+    try:
+        reader = components_v2.component("usage_ledger_reader", js=READ_LEDGER)
+        stored = reader(key="usage_ledger_reader", default={"stored": None}, on_stored_change=lambda: None).stored
+    except Exception:            # no browser (tests) or an old Streamlit: keep the ledger for this session only
+        stored = None
+    if stored is not None:
+        before = ss.ledger                        # anything asked in the second before loading is kept
+        ss.ledger = usage.merge(usage.decode(stored, today), before, today) if stored else before
+        ss.ledger_loaded = True
+        ss.ledger_saved = stored
+        st.rerun()
+else:
+    _saved = usage.encode(ss.ledger)
+    if _saved != ss.ledger_saved:
+        components.html(
+            "<script>try { localStorage.setItem('" + usage.STORAGE_KEY + "', '" + _saved + "'); "
+            "document.cookie = '" + usage.STORAGE_KEY + "=; path=/; max-age=0'; } catch (e) {}</script>", height=0)
+        ss.ledger_saved = _saved

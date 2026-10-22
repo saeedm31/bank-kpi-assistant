@@ -1,4 +1,4 @@
-streamlit>=1.50
+streamlit>=1.52
 pandas>=2.1
 numpy>=1.26
 pyyaml>=6.0

@@ -1,6 +1,6 @@
 """The usage ledger kept in the visitor's browser: totals per day, per model, since the last reset.
 
-It is small on purpose (it lives in a cookie, max ~4 KB): daily totals for the current month,
+It is small on purpose (a few KB in the browser's local storage): daily totals for the current month,
 one total for last month, per-model totals, the 5 most expensive questions and the monthly budget.
 The API key is never part of it.
 """
@@ -9,7 +9,7 @@ import base64
 import datetime as dt
 import json
 
-COOKIE = "bka_usage"
+STORAGE_KEY = "bka_usage"       # localStorage key in the visitor's browser
 MAX_BYTES = 3500
 WARN_AT = 0.8
 DEFAULT_BUDGET = 2.0      # euros per month
@@ -96,8 +96,25 @@ def avg_cost_per_question(state):
     return state["all"][5] / asked if asked else None
 
 
+def merge(state, extra, today):
+    """Add the usage in `extra` (counted before the saved ledger was loaded) into `state`."""
+    roll(state, today)
+    roll(extra, today)
+    for name in ("days", "models"):
+        for k, r in extra[name].items():
+            row = state[name].setdefault(k, _row())
+            for i in range(6):
+                row[i] = round(row[i] + r[i], 6) if i == 5 else row[i] + r[i]
+    for i in range(6):
+        state["all"][i] = round(state["all"][i] + extra["all"][i], 6) if i == 5 else state["all"][i] + extra["all"][i]
+    state["asked"] = state.get("asked", 0) + extra.get("asked", 0)
+    state["free"] += extra["free"]
+    state["top"] = sorted(state["top"] + extra["top"], key=lambda t: -t[0])[:5]
+    return state
+
+
 def encode(state):
-    """Cookie-safe text (URL-safe base64 of compact JSON, no padding), trimmed to fit."""
+    """Storage-safe text (URL-safe base64 of compact JSON, no padding), trimmed to fit."""
     s = dict(state)
     while True:
         raw = base64.urlsafe_b64encode(json.dumps(s, separators=(",", ":")).encode()).decode().rstrip("=")
@@ -114,7 +131,7 @@ def encode(state):
 
 
 def decode(text, today):
-    """The ledger from the cookie, or a fresh one if it is missing or damaged."""
+    """The ledger from the saved text, or a fresh one if it is missing or damaged."""
     try:
         text = text.strip().strip('"')
         s = json.loads(base64.urlsafe_b64decode((text + "=" * (-len(text) % 4)).encode()).decode())

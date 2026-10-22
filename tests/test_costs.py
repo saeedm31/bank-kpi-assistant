@@ -86,7 +86,7 @@ class LedgerTests(unittest.TestCase):
         led["budget"] = 0
         self.assertEqual(usage.status(led, TODAY)["level"], "ok")      # 0 = no limit
 
-    def test_cookie_round_trip_and_size(self):
+    def test_saved_text_round_trip_and_size(self):
         led = usage.empty(TODAY)
         for d in range(1, 23):
             day = dt.date(2026, 10, d)
@@ -94,12 +94,23 @@ class LedgerTests(unittest.TestCase):
                 usage.record(led, summary(0.001 * m), f"model-{m}", "a long question " * 10, day)
         text = usage.encode(led)
         self.assertLessEqual(len(text), usage.MAX_BYTES)
-        self.assertRegex(text, r"^[A-Za-z0-9_-]+$")                     # safe in a cookie
+        self.assertRegex(text, r"^[A-Za-z0-9_-]+$")                     # plain text, safe to store anywhere
         back = usage.decode(text, TODAY)
         self.assertEqual(back["since"], led["since"])
         self.assertAlmostEqual(back["all"][5], led["all"][5])
 
-    def test_damaged_cookie_starts_fresh(self):
+    def test_usage_before_loading_is_merged(self):
+        saved = usage.empty(TODAY)
+        usage.record(saved, summary(0.02), "gpt-6-luna", "NPL ratio", TODAY)
+        early = usage.empty(TODAY)
+        usage.record(early, summary(0.01), "gpt-6-luna", "Deposits", TODAY)
+        usage.record_free(early)
+        led = usage.merge(usage.decode(usage.encode(saved), TODAY), early, TODAY)
+        self.assertAlmostEqual(usage.month_row(led, TODAY)[5], 0.03)
+        self.assertEqual((led["asked"], led["free"], led["models"]["gpt-6-luna"][0]), (2, 1, 4))
+        self.assertEqual([t[1] for t in led["top"]], ["NPL ratio", "Deposits"])
+
+    def test_damaged_saved_text_starts_fresh(self):
         for bad in ("", "not base64!", "eyJ2IjoyfQ"):
             led = usage.decode(bad, TODAY)
             self.assertEqual(led["all"], [0, 0, 0, 0, 0, 0.0])
