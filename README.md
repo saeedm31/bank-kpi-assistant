@@ -56,7 +56,7 @@ AI mode is paid per token, so the app keeps the bill visible:
 - **Monthly budget:** a warning at 80%; at 100% AI mode pauses and the free built-in engine answers.
 - **Settings:** budget, USD→EUR rate, prompt caching on/off, and an editable price table (US dollars per million
   tokens, from the providers' price pages). Local models through Ollama cost €0. **Reset the counter** clears everything.
-- **Stored in your browser only** (a small cookie). Your API key is never stored.
+- **Stored in your browser only** (local storage). Your API key is never stored.
 - **No key? Choose "Demo (simulated AI)".** The built-in engine answers, and the app counts the tokens a real model
   would use, marked *estimated*, so you can try the tracker for free.
 
