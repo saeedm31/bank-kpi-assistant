@@ -44,6 +44,8 @@ question get different numbers, and nobody can see how the answer was made.
 
 ![From question to answer](docs/flow.svg)
 
+**Documentation:** [architecture](docs/architecture.md) · [data card](docs/data_card.md) · [evaluation](docs/evaluation.md) · [decision records](docs/adr/)
+
 ## 💶 What AI answers cost
 
 AI mode is paid per token, so the app keeps the bill visible:
